@@ -75,7 +75,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 2️⃣ تصفية وإرسال الأخبار الاقتصادية
+# 2️⃣ تصفية وإرسال الأخبار الاقتصادية لجميع العملات
 def check_forex_factory_news():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -92,7 +92,8 @@ def check_forex_factory_news():
             title = event.get("title")
             date_str = event.get("date")
 
-            if currency in ["USD", "XAU"] and impact in ["High", "Medium"]:
+            # تم تعديل الشرط ليشمل جميع العملات طالما أن التأثير High أو Medium
+            if impact in ["High", "Medium"]:
                 try:
                     event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                     event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
@@ -107,7 +108,7 @@ def check_forex_factory_news():
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)
 ━━━━━━━━━━━━━━━━━
-#Economic_News #XAUUSD"""
+#Economic_News #{currency}"""
                         send_to_telegram(news_alert)
                         sent_alerts.add(event_id)
                 except Exception:
