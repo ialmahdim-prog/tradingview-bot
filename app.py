@@ -1,40 +1,124 @@
+from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request
 import requests
-import os
 
 app = Flask(__name__)
 
-# ضع رمز بوت تيليجرام ورقم المحادثة هنا أو استخدم متغيرات البيئة
-TELEGRAM_BOT_TOKEN = "TOKEN_HERE"
-TELEGRAM_CHAT_ID = "CHAT_ID_HERE"
+# ⚙️ إعدادات بوت تيليجرام
+TELEGRAM_BOT_TOKEN = "8655072721:AAFlvQZFdR2DOduJcLeOsqBSDNXyGJZlSXA"
+TELEGRAM_CHANNEL_ID = "7699426867"
 
-@app.route('/')
-def home():
-    return "Bot is running successfully!"
+# مجموعة لتسجيل الأخبار لمنع التكرار
+sent_alerts = set()
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-    if data:
-        # استخراج الرسالة القادمة من تنبيه ترادينغ فيو
-        message = data.get('message', 'تنبيه جديد من TradingView')
-        
-        # إرسال الرسالة إلى تيليجرام
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-            "parse_mode": "Markdown"
-        }
+def send_to_telegram(message):
+    """🤖 دالة إرسال الرسائل إلى قناة تيليجرام"""
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHANNEL_ID,
+        "text": message,
+        "parse_mode": "Markdown",
+    }
+    try:
         response = requests.post(url, json=payload)
-        
-        if response.status_code == 200:
-            return "Sent to Telegram successfully", 200
-        else:
-            return "Failed to send to Telegram", 500
-            
-    return "No data received", 400
+        return response.json()
+    except Exception as e:
+        print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
+        return None
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+# 1️⃣ استقبال إشارات تريدينج فيو
+@app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
+def webhook():
+    data = request.json
+    if not data:
+        return "Invalid Data", 400
+
+    signal_type = data.get("type", "VIP")
+    ticker = data.get("ticker", "XAUUSD")
+    interval = data.get("interval", "15m")
+    action = data.get("action", "شراء")
+    close_price = data.get("close", "0.0")
+    sl = data.get("sl", "يُحدد هنا")
+    tp1 = data.get("tp1", "يُحدد هنا")
+    tp2 = data.get("tp2", "يُحدد هنا")
+    tp3 = data.get("tp3", "يُحدد هنا")
+
+    if signal_type == "VIP":
+        message = f"""🚨🔥 [صفقة VIP رئيسية] 🔥🚨
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+🎯 نوع الصفقة: {action}
+💰 سعر الدخول: {close_price}
+🛑 وقف الخسارة (SL): {sl}
+🎯 الهدف الأول (TP1): {tp1}
+🎯 الهدف الثاني (TP2): {tp2}
+🎯 الهدف الثالث (TP3): {tp3}
+━━━━━━━━━━━━━━━━━
+#VIP_Signal #EA_ALPHA"""
+    else:
+        message = f"""⭐⚡ [فرصة عالية التأكيد] ⚡⭐
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+🎯 نوع الصفقة: {action}
+💰 سعر الدخول: {close_price}
+🛑 وقف الخسارة (SL): {sl}
+🎯 الهدف الأول (TP1): {tp1}
+🎯 الهدف الثاني (TP2): {tp2}
+━━━━━━━━━━━━━━━━━
+#High_Confidence #EA_ALPHA"""
+
+    send_to_telegram(message)
+    return "OK", 200
+
+# 2️⃣ تصفية وإرسال الأخبار الاقتصادية
+def check_forex_factory_news():
+    try:
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        response = requests.get(url)
+        if response.status_code != 200:
+            return
+
+        events = response.json()
+        now_ksa = datetime.utcnow() + timedelta(hours=3)
+
+        for event in events:
+            currency = event.get("currency")
+            impact = event.get("impact")
+            title = event.get("title")
+            date_str = event.get("date")
+
+            if currency in ["USD", "XAU"] and impact in ["High", "Medium"]:
+                try:
+                    event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                    event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
+                    time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
+                    event_id = f"{title}_{date_str}"
+
+                    if 58 <= time_difference <= 62 and event_id not in sent_alerts:
+                        impact_emoji = "🔴" if impact == "High" else "🟠"
+                        news_alert = f"""⏳ **تنبيه اقتصادي هام (بعد ساعة)**
+━━━━━━━━━━━━━━━━━
+📊 الحدث: {title}
+💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
+⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)
+━━━━━━━━━━━━━━━━━
+#Economic_News #XAUUSD"""
+                        send_to_telegram(news_alert)
+                        sent_alerts.add(event_id)
+                except Exception:
+                    continue
+    except Exception as e:
+        print("خطأ في فحص الأخبار الاقتصادية:", e)
+
+# ⚙️ المجدول الزمني
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=check_forex_factory_news, trigger="interval", minutes=1)
+scheduler.start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
