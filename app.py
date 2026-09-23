@@ -141,5 +141,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(func=check_forex_factory_news, trigger="interval", minutes=1)
 scheduler.start()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+@app.route('/')
+def home():
+    return "Bot is running!", 200
+
