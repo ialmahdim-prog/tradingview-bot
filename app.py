@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request
 import requests
+import json
 
 app = Flask(__name__)
 
@@ -31,6 +32,15 @@ def send_to_telegram(message):
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     data = request.get_json(force=True, silent=True)
+    if not data:
+        if request.form:
+            data = request.form.to_dict()
+        else:
+            try:
+                data = json.loads(request.data.decode('utf-8'))
+            except Exception:
+                data = {}
+
     if not data:
         return "Invalid Data", 400
 
