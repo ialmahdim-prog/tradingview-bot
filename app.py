@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # ⚙️ إعدادات بوت تيليجرام
 TELEGRAM_BOT_TOKEN = "8655072721:AAFlvQZFdR2DOduJcLeOsqBSDNXyGJZlSXA"
-TELEGRAM_CHANNEL_ID = "-1004303846235"
+TELEGRAM_CHANNEL_ID = "-1004363846255"
 
 # مجموعة لتسجيل الأخبار لمنع التكرار
 sent_alerts = set()
