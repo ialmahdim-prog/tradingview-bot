@@ -30,7 +30,7 @@ def send_to_telegram(message):
 # 1️⃣ استقبال إشارات تريدينج فيو
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
-    data = request.json
+    data = request.get_json(force=True, silent=True)
     if not data:
         return "Invalid Data", 400
 
@@ -58,6 +58,17 @@ def webhook():
 🎯 الهدف الثالث (TP3): {tp3}
 ━━━━━━━━━━━━━━━━━
 #VIP_Signal #EA_ALPHA"""
+    elif signal_type == "reversal":
+        message = f"""🛑⚠️ [تنبيه انعكاس / خروج مبكر] ⚠️🛑
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+📉 الحالة: {action}
+💰 سعر الإغلاق: {close_price}
+💡 انتظر دخول جديد ⏳
+━━━━━━━━━━━━━━━━━
+#Reversal #EA_ALPHA"""
     else:
         message = f"""⭐⚡ [فرصة عالية التأكيد] ⚡⭐
 ━━━━━━━━━━━━━━━━━
@@ -92,7 +103,6 @@ def check_forex_factory_news():
             title = event.get("title")
             date_str = event.get("date")
 
-            # تم تعديل الشرط ليشمل جميع العملات طالما أن التأثير High أو Medium
             if impact in ["High", "Medium"]:
                 try:
                     event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
