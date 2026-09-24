@@ -123,9 +123,10 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{title}_{date_str}"
 
-                    if 58 <= time_difference <= 62 and event_id not in sent_alerts:
+                    # تعديل النطاق الزمني ليصبح بين 10 و 15 دقيقة للاختبار
+                    if 10 <= time_difference <= 15 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
-                        news_alert = f"""⏳ **تنبيه اقتصادي هام (بعد ساعة)**
+                        news_alert = f"""⏳ **تنبيه اقتصادي هام (قريب جداً)**
 ━━━━━━━━━━━━━━━━━
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
@@ -156,3 +157,4 @@ def test_news():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
