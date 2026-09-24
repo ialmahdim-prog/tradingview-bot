@@ -151,8 +151,7 @@ def home():
 @app.route('/test-news')
 def test_news():
     check_forex_factory_news()
- return "Done", 200
-
+    return "Done", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
