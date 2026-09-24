@@ -31,6 +31,9 @@ def send_to_telegram(message):
 # 1️⃣ استقبال إشارات تريدينج فيو
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
+    # 🔍 طباعة الطلب الخام في السجلات لمعرفة المشكلة بدقة
+    print("Raw request data received:", request.data)
+
     data = request.get_json(force=True, silent=True)
     if not data:
         if request.form:
@@ -144,4 +147,3 @@ scheduler.start()
 @app.route('/')
 def home():
     return "Bot is running!", 200
-
