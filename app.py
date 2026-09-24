@@ -3,6 +3,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, request
 import requests
 import json
+import os
 
 app = Flask(__name__)
 
@@ -31,7 +32,6 @@ def send_to_telegram(message):
 # 1️⃣ استقبال إشارات تريدينج فيو
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
-    # 🔍 طباعة الطلب الخام في السجلات لمعرفة المشكلة بدقة
     print("Raw request data received:", request.data)
 
     data = request.get_json(force=True, silent=True)
@@ -147,3 +147,13 @@ scheduler.start()
 @app.route('/')
 def home():
     return "Bot is running!", 200
+
+@app.route('/test-news')
+def test_news():
+    check_forex_factory_news()
+            return "Done", 200
+
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
