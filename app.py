@@ -29,6 +29,27 @@ def send_to_telegram(message):
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
 
+def calculate_risk_reward(action, entry, sl, tp):
+    """📊 حساب نسبة المخاطرة إلى العائد تلقائياً"""
+    try:
+        entry_f = float(entry)
+        sl_f = float(sl)
+        tp_f = float(tp)
+        
+        if action.lower() in ["شراء", "buy"]:
+            risk = abs(entry_f - sl_f)
+            reward = abs(tp_f - entry_f)
+        else:
+            risk = abs(sl_f - entry_f)
+            reward = abs(entry_f - tp_f)
+            
+        if risk > 0:
+            ratio = round(reward / risk, 1)
+            return f"1:{ratio}"
+    except Exception:
+        pass
+    return "غير محدد"
+
 # 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook)
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
@@ -53,10 +74,12 @@ def webhook():
     interval = data.get("interval", "15m")
     action = data.get("action", "شراء")
     close_price = data.get("close", "0.0")
-    sl = data.get("sl", "يُحدد هنا")
-    tp1 = data.get("tp1", "يُحدد هنا")
+    sl = data.get("sl", "0.0")
+    tp1 = data.get("tp1", "0.0")
     tp2 = data.get("tp2", "يُحدد هنا")
     tp3 = data.get("tp3", "يُحدد هنا")
+
+    rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
     # 🚨 التصنيف الأول: صفقات VIP الرئيسية
     if signal_type == "VIP":
@@ -71,12 +94,12 @@ def webhook():
 🎯 الهدف الأول (TP1): {tp1}
 🎯 الهدف الثاني (TP2): {tp2}
 🎯 الهدف الثالث (TP3): {tp3}
-━━━━━━━━━━━━━━━━━
-#VIP_Signal #EA_ALPHA"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}
+━━━━━━━━━━━━━━━━━"""
 
-    # ⭐ التصنيف الثاني: فرص عالية التأكيد (High Confidence)
+    # ⭐ التصنيف الثاني: فرص عالية (High Confidence)
     elif signal_type == "HIGH":
-        message = f"""⭐⚡ [فرصة عالية التأكيد] ⚡⭐
+        message = f"""⭐⚡ [فرصة عالية] ⚡⭐
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
 💱 الأداة / الزوج: {ticker}
@@ -86,12 +109,12 @@ def webhook():
 🛑 وقف الخسارة (SL): {sl}
 🎯 الهدف الأول (TP1): {tp1}
 🎯 الهدف الثاني (TP2): {tp2}
-━━━━━━━━━━━━━━━━━
-#High_Confidence #EA_ALPHA"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}
+━━━━━━━━━━━━━━━━━"""
 
-    # 🔹 التصنيف الثالث: فرص متوسطة التأكيد (Medium Confidence)
+    # 🔹 التصنيف الثالث: فرص متوسطة (Medium Confidence)
     elif signal_type == "MEDIUM":
-        message = f"""🔹📊 [فرصة متوسطة التأكيد] 📊🔹
+        message = f"""🔹📊 [فرصة متوسطة] 📊🔹
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
 💱 الأداة / الزوج: {ticker}
@@ -100,8 +123,8 @@ def webhook():
 💰 سعر الدخول: {close_price}
 🛑 وقف الخسارة (SL): {sl}
 🎯 الهدف الأول (TP1): {tp1}
-━━━━━━━━━━━━━━━━━
-#Medium_Confidence #EA_ALPHA"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}
+━━━━━━━━━━━━━━━━━"""
 
     # 🛑 تنبيهات الانعكاس أو الخروج
     elif signal_type == "REVERSAL":
@@ -113,10 +136,9 @@ def webhook():
 📉 الحالة: {action}
 💰 سعر الإغلاق: {close_price}
 💡 انتظر دخول جديد ⏳
-━━━━━━━━━━━━━━━━━
-#Reversal #EA_ALPHA"""
+━━━━━━━━━━━━━━━━━"""
 
-    # 📂 التصنيف الافتراضي (في حال وردت بيانات عامة)
+    # 📂 التصنيف الافتراضي
     else:
         message = f"""📈 [إشارة تداول عامة] 📈
 ━━━━━━━━━━━━━━━━━
@@ -125,13 +147,12 @@ def webhook():
 ⏳ الفريم الزمني: {interval}
 🎯 الاتجاه: {action}
 💰 السعر: {close_price}
-━━━━━━━━━━━━━━━━━
-#General_Signal #EA_ALPHA"""
+━━━━━━━━━━━━━━━━━"""
 
     send_to_telegram(message)
     return "OK", 200
 
-# 2️⃣ تصفية وإرسال الأخبار الاقتصادية لجميع العملات
+# 2️⃣ تصفية وإرسال الأخبار الاقتصادية
 def check_forex_factory_news():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -162,8 +183,7 @@ def check_forex_factory_news():
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)
-━━━━━━━━━━━━━━━━━
-#Economic_News #{currency}"""
+━━━━━━━━━━━━━━━━━"""
                         send_to_telegram(news_alert)
                         sent_alerts.add(event_id)
                 except Exception:
@@ -187,7 +207,8 @@ def test_news():
 
 @app.route('/test-webhook')
 def test_webhook():
-    message = """🚨🔥 [صفقة VIP رئيسية] 🔥🚨
+    rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
+    message = f"""🚨🔥 [صفقة VIP رئيسية] 🔥🚨
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
 💱 الأداة / الزوج: XAUUSD
@@ -198,15 +219,15 @@ def test_webhook():
 🎯 الهدف الأول (TP1): 2360.00
 🎯 الهدف الثاني (TP2): 2370.00
 🎯 الهدف الثالث (TP3): 2380.00
-━━━━━━━━━━━━━━━━━
-#VIP_Signal #EA_ALPHA"""
-    
+⚖️ نسبة المخاطرة للعائد: {rr}
+━━━━━━━━━━━━━━━━━"""
     result = send_to_telegram(message)
     return f"Test Webhook Sent. Response: {result}", 200
 
 @app.route('/test-high')
 def test_high():
-    message = """⭐⚡ [فرصة عالية التأكيد] ⚡⭐
+    rr = calculate_risk_reward("بيع", "1.0920", "1.0950", "1.0890")
+    message = f"""⭐⚡ [فرصة عالية] ⚡⭐
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
 💱 الأداة / الزوج: EURUSD
@@ -216,14 +237,15 @@ def test_high():
 🛑 وقف الخسارة (SL): 1.0950
 🎯 الهدف الأول (TP1): 1.0890
 🎯 الهدف الثاني (TP2): 1.0860
-━━━━━━━━━━━━━━━━━
-#High_Confidence #EA_ALPHA"""
+⚖️ نسبة المخاطرة للعائد: {rr}
+━━━━━━━━━━━━━━━━━"""
     result = send_to_telegram(message)
     return f"Test High Webhook Sent. Response: {result}", 200
 
 @app.route('/test-medium')
 def test_medium():
-    message = """🔹📊 [فرصة متوسطة التأكيد] 📊🔹
+    rr = calculate_risk_reward("شراء", "1.3100", "1.3070", "1.3140")
+    message = f"""🔹📊 [فرصة متوسطة] 📊🔹
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
 💱 الأداة / الزوج: GBPUSD
@@ -232,15 +254,14 @@ def test_medium():
 💰 سعر الدخول: 1.3100
 🛑 وقف الخسارة (SL): 1.3070
 🎯 الهدف الأول (TP1): 1.3140
-━━━━━━━━━━━━━━━━━
-#Medium_Confidence #EA_ALPHA"""
+⚖️ نسبة المخاطرة للعائد: {rr}
+━━━━━━━━━━━━━━━━━"""
     result = send_to_telegram(message)
     return f"Test Medium Webhook Sent. Response: {result}", 200
 
 @app.route('/test-news-format')
 def test_news_format():
     try:
-        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت دون أخطاء
         currency = "USD"
         impact = "High"
         title = "معدل البطالة الأمريكي (تجريبي)"
@@ -251,8 +272,7 @@ def test_news_format():
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: تجريبي (يعمل بشكل صحيح)
-━━━━━━━━━━━━━━━━━
-#Economic_News #{currency}"""
+━━━━━━━━━━━━━━━━━"""
         
         result = send_to_telegram(news_alert)
         return f"News format test sent! Response: {result}", 200
