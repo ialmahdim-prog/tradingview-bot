@@ -29,7 +29,7 @@ def send_to_telegram(message):
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
 
-# 1️⃣ استقبال إشارات تريدينج فيو (Webhook)
+# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook)
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     print("Raw request data received:", request.data)
@@ -48,7 +48,7 @@ def webhook():
         print("⚠️ تنبيه: لم يتم استلام بيانات صحيحة من تريدينج فيو.")
         return "Invalid Data", 400
 
-    signal_type = data.get("type", "VIP")
+    signal_type = data.get("type", "VIP").upper()
     ticker = data.get("ticker", "XAUUSD")
     interval = data.get("interval", "15m")
     action = data.get("action", "شراء")
@@ -58,6 +58,7 @@ def webhook():
     tp2 = data.get("tp2", "يُحدد هنا")
     tp3 = data.get("tp3", "يُحدد هنا")
 
+    # 🚨 التصنيف الأول: صفقات VIP الرئيسية
     if signal_type == "VIP":
         message = f"""🚨🔥 [صفقة VIP رئيسية] 🔥🚨
 ━━━━━━━━━━━━━━━━━
@@ -72,18 +73,9 @@ def webhook():
 🎯 الهدف الثالث (TP3): {tp3}
 ━━━━━━━━━━━━━━━━━
 #VIP_Signal #EA_ALPHA"""
-    elif signal_type == "reversal":
-        message = f"""🛑⚠️ [تنبيه انعكاس / خروج مبكر] ⚠️🛑
-━━━━━━━━━━━━━━━━━
-📊 مؤشر: EA ALPHA VIP
-💱 الأداة / الزوج: {ticker}
-⏳ الفريم الزمني: {interval}
-📉 الحالة: {action}
-💰 سعر الإغلاق: {close_price}
-💡 انتظر دخول جديد ⏳
-━━━━━━━━━━━━━━━━━
-#Reversal #EA_ALPHA"""
-    else:
+
+    # ⭐ التصنيف الثاني: فرص عالية التأكيد (High Confidence)
+    elif signal_type == "HIGH":
         message = f"""⭐⚡ [فرصة عالية التأكيد] ⚡⭐
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
@@ -96,6 +88,45 @@ def webhook():
 🎯 الهدف الثاني (TP2): {tp2}
 ━━━━━━━━━━━━━━━━━
 #High_Confidence #EA_ALPHA"""
+
+    # 🔹 التصنيف الثالث: فرص متوسطة التأكيد (Medium Confidence)
+    elif signal_type == "MEDIUM":
+        message = f"""🔹📊 [فرصة متوسطة التأكيد] 📊🔹
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+🎯 نوع الصفقة: {action}
+💰 سعر الدخول: {close_price}
+🛑 وقف الخسارة (SL): {sl}
+🎯 الهدف الأول (TP1): {tp1}
+━━━━━━━━━━━━━━━━━
+#Medium_Confidence #EA_ALPHA"""
+
+    # 🛑 تنبيهات الانعكاس أو الخروج
+    elif signal_type == "REVERSAL":
+        message = f"""🛑⚠️ [تنبيه انعكاس / خروج مبكر] ⚠️🛑
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+📉 الحالة: {action}
+💰 سعر الإغلاق: {close_price}
+💡 انتظر دخول جديد ⏳
+━━━━━━━━━━━━━━━━━
+#Reversal #EA_ALPHA"""
+
+    # 📂 التصنيف الافتراضي (في حال وردت بيانات عامة)
+    else:
+        message = f"""📈 [إشارة تداول عامة] 📈
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: {ticker}
+⏳ الفريم الزمني: {interval}
+🎯 الاتجاه: {action}
+💰 السعر: {close_price}
+━━━━━━━━━━━━━━━━━
+#General_Signal #EA_ALPHA"""
 
     send_to_telegram(message)
     return "OK", 200
@@ -151,7 +182,6 @@ def home():
 
 @app.route('/test-news')
 def test_news():
-    # فحص وتشغيل جلب الأخبار واختبار إرسال تنبيه فوري
     check_forex_factory_news()
     return "News check executed successfully!", 200
 
@@ -161,7 +191,6 @@ if __name__ == '__main__':
 
 @app.route('/test-webhook')
 def test_webhook():
-    # رسالة تجريبية مطابقة تماماً لتنسيق صفقات VIP الأساسية في الكود
     message = """🚨🔥 [صفقة VIP رئيسية] 🔥🚨
 ━━━━━━━━━━━━━━━━━
 📊 مؤشر: EA ALPHA VIP
@@ -187,7 +216,6 @@ def test_news_format():
         if response.status_code == 200:
             events = response.json()
             if events:
-                # نأخذ أول خبر كمثال لاختبار التنسيق والشكل
                 event = events[0]
                 currency = event.get("currency", "USD")
                 impact = event.get("impact", "High")
@@ -208,3 +236,35 @@ def test_news_format():
     except Exception as e:
         return f"Error: {e}", 500
 
+@app.route('/test-high')
+def test_high():
+    message = """⭐⚡ [فرصة عالية التأكيد] ⚡⭐
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: EURUSD
+⏳ الفريم الزمني: 30m
+🎯 نوع الصفقة: بيع
+💰 سعر الدخول: 1.0920
+🛑 وقف الخسارة (SL): 1.0950
+🎯 الهدف الأول (TP1): 1.0890
+🎯 الهدف الثاني (TP2): 1.0860
+━━━━━━━━━━━━━━━━━
+#High_Confidence #EA_ALPHA"""
+    result = send_to_telegram(message)
+    return f"Test High Webhook Sent. Response: {result}", 200
+
+@app.route('/test-medium')
+def test_medium():
+    message = """🔹📊 [فرصة متوسطة التأكيد] 📊🔹
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: GBPUSD
+⏳ الفريم الزمني: 15m
+🎯 نوع الصفقة: شراء
+💰 سعر الدخول: 1.3100
+🛑 وقف الخسارة (SL): 1.3070
+🎯 الهدف الأول (TP1): 1.3140
+━━━━━━━━━━━━━━━━━
+#Medium_Confidence #EA_ALPHA"""
+    result = send_to_telegram(message)
+    return f"Test Medium Webhook Sent. Response: {result}", 200
