@@ -268,3 +268,70 @@ def test_medium():
 #Medium_Confidence #EA_ALPHA"""
     result = send_to_telegram(message)
     return f"Test Medium Webhook Sent. Response: {result}", 200
+
+@app.route('/test-news-format')
+def test_news_format():
+    try:
+        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
+        currency = "USD"
+        impact = "High"
+        title = "معدل البطالة الأمريكي (تجريبي)"
+        impact_emoji = "🔴"
+        
+        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
+━━━━━━━━━━━━━━━━━
+📊 الحدث: {title}
+💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
+⏰ الوقت: تجريبي (يعمل بشكل صحيح)
+━━━━━━━━━━━━━━━━━
+#Economic_News #{currency}"""
+        
+        result = send_to_telegram(news_alert)
+        return f"News format test sent! Response: {result}", 200
+    except Exception as e:
+        return f"Error: {e}", 500
+@app.route('/test-news-format')
+def test_news_format():
+    try:
+        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
+        currency = "USD"
+        impact = "High"
+        title = "معدل البطالة الأمريكي (تجريبي)"
+        impact_emoji = "🔴"
+        
+        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
+━━━━━━━━━━━━━━━━━
+📊 الحدث: {title}
+💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
+⏰ الوقت: تجريبي (يعمل بشكل صحيح)
+━━━━━━━━━━━━━━━━━
+#Economic_News #{currency}"""
+        
+        result = send_to_telegram(news_alert)
+        return f"News format test sent! Response: {result}", 200
+    except Exception as e:
+        return f"Error: {e}", 500
+
+@app.route('/test-news-format')
+def test_news_format():
+    try:
+        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
+        currency = "USD"
+        impact = "High"
+        title = "معدل البطالة الأمريكي (تجريبي)"
+        impact_emoji = "🔴"
+        
+        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
+━━━━━━━━━━━━━━━━━
+📊 الحدث: {title}
+💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
+⏰ الوقت: تجريبي (يعمل بشكل صحيح)
+━━━━━━━━━━━━━━━━━
+#Economic_News #{currency}"""
+        
+        result = send_to_telegram(news_alert)
+        return f"News format test sent! Response: {result}", 200
+    except Exception as e:
+        return f"Error: {e}", 500
+
+
