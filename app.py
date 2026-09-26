@@ -158,3 +158,23 @@ def test_news():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+@app.route('/test-webhook')
+def test_webhook():
+    # رسالة تجريبية مطابقة تماماً لتنسيق صفقات VIP الأساسية في الكود
+    message = """🚨🔥 [صفقة VIP رئيسية] 🔥🚨
+━━━━━━━━━━━━━━━━━
+📊 مؤشر: EA ALPHA VIP
+💱 الأداة / الزوج: XAUUSD
+⏳ الفريم الزمني: 15m
+🎯 نوع الصفقة: شراء
+💰 سعر الدخول: 2350.00
+🛑 وقف الخسارة (SL): 2340.00
+🎯 الهدف الأول (TP1): 2360.00
+🎯 الهدف الثاني (TP2): 2370.00
+🎯 الهدف الثالث (TP3): 2380.00
+━━━━━━━━━━━━━━━━━
+#VIP_Signal #EA_ALPHA"""
+    
+    result = send_to_telegram(message)
+    return f"Test Webhook Sent. Response: {result}", 200
