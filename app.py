@@ -185,10 +185,6 @@ def test_news():
     check_forex_factory_news()
     return "News check executed successfully!", 200
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-
 @app.route('/test-webhook')
 def test_webhook():
     message = """🚨🔥 [صفقة VIP رئيسية] 🔥🚨
@@ -207,34 +203,6 @@ def test_webhook():
     
     result = send_to_telegram(message)
     return f"Test Webhook Sent. Response: {result}", 200
-
-@app.route('/test-news-format')
-def test_news_format():
-    try:
-        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-        response = requests.get(url)
-        if response.status_code == 200:
-            events = response.json()
-            if events:
-                event = events[0]
-                currency = event.get("currency", "USD")
-                impact = event.get("impact", "High")
-                title = event.get("title", "خبر تجريبي")
-                
-                impact_emoji = "🔴" if impact == "High" else "🟠"
-                news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
-━━━━━━━━━━━━━━━━━
-📊 الحدث: {title}
-💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: تجريبي (يعمل بشكل صحيح)
-━━━━━━━━━━━━━━━━━
-#Economic_News #{currency}"""
-                
-                result = send_to_telegram(news_alert)
-                return f"News format test sent! Response: {result}", 200
-        return "No events found", 404
-    except Exception as e:
-        return f"Error: {e}", 500
 
 @app.route('/test-high')
 def test_high():
@@ -272,28 +240,7 @@ def test_medium():
 @app.route('/test-news-format')
 def test_news_format():
     try:
-        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
-        currency = "USD"
-        impact = "High"
-        title = "معدل البطالة الأمريكي (تجريبي)"
-        impact_emoji = "🔴"
-        
-        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
-━━━━━━━━━━━━━━━━━
-📊 الحدث: {title}
-💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: تجريبي (يعمل بشكل صحيح)
-━━━━━━━━━━━━━━━━━
-#Economic_News #{currency}"""
-        
-        result = send_to_telegram(news_alert)
-        return f"News format test sent! Response: {result}", 200
-    except Exception as e:
-        return f"Error: {e}", 500
-@app.route('/test-news-format')
-def test_news_format():
-    try:
-        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
+        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت دون أخطاء
         currency = "USD"
         impact = "High"
         title = "معدل البطالة الأمريكي (تجريبي)"
@@ -312,24 +259,6 @@ def test_news_format():
     except Exception as e:
         return f"Error: {e}", 500
 
-@app.route('/test-news-format')
-def test_news_format():
-    try:
-        # بيانات تجريبية ثابتة لضمان نجاح الاختبار في أي وقت
-        currency = "USD"
-        impact = "High"
-        title = "معدل البطالة الأمريكي (تجريبي)"
-        impact_emoji = "🔴"
-        
-        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
-━━━━━━━━━━━━━━━━━
-📊 الحدث: {title}
-💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: تجريبي (يعمل بشكل صحيح)
-━━━━━━━━━━━━━━━━━
-#Economic_News #{currency}"""
-        
-        result = send_to_telegram(news_alert)
-        return f"News format test sent! Response: {result}", 200
-    except Exception as e:
-        return f"Error: {e}", 500
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
