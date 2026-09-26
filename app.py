@@ -7,7 +7,7 @@ import os
 
 app = Flask(__name__)
 
-# ⚙️ إعدادات بوت تيليجرام (تم التحديث بالرمز الجديد)
+# ⚙️ إعدادات بوت تيليجرام
 TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
@@ -123,7 +123,6 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{title}_{date_str}"
 
-                    # تعديل النطاق الزمني ليصبح بين 10 و 15 دقيقة للاختبار
                     if 10 <= time_difference <= 15 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ **تنبيه اقتصادي هام (قريب جداً)**
@@ -151,8 +150,10 @@ def home():
 
 @app.route('/test-news')
 def test_news():
+    # إرسال رسالة تجريبية فورية للتأكد من أن البوت والقناة متصلان
+    result = send_to_telegram("🚀 تجربة اتصال ناجحة مع البوت والقناة!")
     check_forex_factory_news()
-    return "Done", 200
+    return f"Done. Telegram API Response: {result}", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
