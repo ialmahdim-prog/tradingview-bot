@@ -333,5 +333,3 @@ def test_news_format():
         return f"News format test sent! Response: {result}", 200
     except Exception as e:
         return f"Error: {e}", 500
-
-
