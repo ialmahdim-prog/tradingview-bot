@@ -29,7 +29,7 @@ def send_to_telegram(message):
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
 
-# 1️⃣ استقبال إشارات تريدينج فيو
+# 1️⃣ استقبال إشارات تريدينج فيو (Webhook)
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     print("Raw request data received:", request.data)
@@ -45,6 +45,7 @@ def webhook():
                 data = {}
 
     if not data:
+        print("⚠️ تنبيه: لم يتم استلام بيانات صحيحة من تريدينج فيو.")
         return "Invalid Data", 400
 
     signal_type = data.get("type", "VIP")
@@ -150,10 +151,9 @@ def home():
 
 @app.route('/test-news')
 def test_news():
-    # إرسال رسالة تجريبية فورية للتأكد من أن البوت والقناة متصلان
-    result = send_to_telegram("🚀 تجربة اتصال ناجحة مع البوت والقناة!")
+    # فحص وتشغيل جلب الأخبار واختبار إرسال تنبيه فوري
     check_forex_factory_news()
-    return f"Done. Telegram API Response: {result}", 200
+    return "News check executed successfully!", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
