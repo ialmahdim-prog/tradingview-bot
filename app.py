@@ -7,8 +7,8 @@ import os
 
 app = Flask(__name__)
 
-# ⚙️ إعدادات بوت تيليجرام
-TELEGRAM_BOT_TOKEN = "8655072721:AAFlvQZFdR2DOduJcLeOsqBSDNXyGJZlSXA"
+# ⚙️ إعدادات بوت تيليجرام (تم التحديث بالرمز الجديد)
+TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
 # مجموعة لتسجيل الأخبار لمنع التكرار
@@ -157,4 +157,3 @@ def test_news():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
