@@ -282,3 +282,31 @@ def test_news_format():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة (مضاربة سريعة)
+    elif signal_type == "REINFORCEMENT":
+        message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
+━━━━━━━━━━━━━━━━━
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: {interval}
+🎯 الحالة: {action}
+💰 نطاق السعر: {close_price}
+🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
+💡 فرصة مضاربة سريعة مستقلة ⏳
+━━━━━━━━━━━━━━━━━"""
+@app.route('/test-reinforcement')
+def test_reinforcement():
+    message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
+━━━━━━━━━━━━━━━━━
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: XAUUSD
+⏳ الفريم: 15m
+🎯 الحالة: 🟢 شراء تعزيزي وتجميع
+💰 نطاق السعر: 4280.00 - 4285.00
+🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
+💡 فرصة مضاربة سريعة مستقلة ⏳
+━━━━━━━━━━━━━━━━━"""
+    result = send_to_telegram(message)
+    return f"Test Reinforcement Sent. Response: {result}", 200
+
