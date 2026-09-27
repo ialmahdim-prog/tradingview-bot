@@ -308,5 +308,5 @@ def test_reinforcement():
     return f"Test Reinforcement Sent. Response: {result}", 200
 
 if __name__ == '__main__':
-    port = int(os.environ.0.get("PORT", 5000) if "PORT" in os.environ else 5000) # تم ضبطه بشكل آمن
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
