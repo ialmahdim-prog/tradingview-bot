@@ -138,6 +138,19 @@ def webhook():
 💡 انتظر دخول جديد ⏳
 ━━━━━━━━━━━━━━━━━"""
 
+    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة (مضاربة سريعة)
+    elif signal_type == "REINFORCEMENT":
+        message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
+━━━━━━━━━━━━━━━━━
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: {interval}
+🎯 الحالة: {action}
+💰 نطاق السعر: {close_price}
+🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
+💡 فرصة مضاربة سريعة مستقلة ⏳
+━━━━━━━━━━━━━━━━━"""
+
     # 📂 التصنيف الافتراضي
     else:
         message = f"""📈 [إشارة تداول عامة] 📈
@@ -279,22 +292,6 @@ def test_news_format():
     except Exception as e:
         return f"Error: {e}", 500
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-
-    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة (مضاربة سريعة)
-    elif signal_type == "REINFORCEMENT":
-        message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
-━━━━━━━━━━━━━━━━━
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الحالة: {action}
-💰 نطاق السعر: {close_price}
-🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
-💡 فرصة مضاربة سريعة مستقلة ⏳
-━━━━━━━━━━━━━━━━━"""
 @app.route('/test-reinforcement')
 def test_reinforcement():
     message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
@@ -310,3 +307,6 @@ def test_reinforcement():
     result = send_to_telegram(message)
     return f"Test Reinforcement Sent. Response: {result}", 200
 
+if __name__ == '__main__':
+    port = int(os.environ.0.get("PORT", 5000) if "PORT" in os.environ else 5000) # تم ضبطه بشكل آمن
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
