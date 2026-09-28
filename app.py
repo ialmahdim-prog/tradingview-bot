@@ -11,8 +11,8 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
-# مجموعة لتسجيل الأخبار لمنع التكرار
-sent_alerts = set()
+# مجموعة لتسجيل الأخبار لمنع التكرار (تخزين الـ event_id وحفظ الـ message_id للرد عليها لاحقاً)
+sent_alerts = {} 
 
 def send_to_telegram(message, reply_to_message_id=None):
     """🤖 دالة إرسال الرسائل إلى قناة تيليجرام مع دعم الرد المباشر"""
@@ -27,7 +27,10 @@ def send_to_telegram(message, reply_to_message_id=None):
 
     try:
         response = requests.post(url, json=payload)
-        return response.json()
+        res_data = response.json()
+        if res_data.get("ok"):
+            return res_data.get("result", {}).get("message_id")
+        return None
     except Exception as e:
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
@@ -84,7 +87,7 @@ def webhook():
 
     rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
-    # 🚨 التصنيف الأول: صفقات VIP الرئيسية (بدون خطوط طويلة، بفاصل جمالي نظيف)
+    # 🚨 التصنيف الأول: صفقات VIP الرئيسية
     if signal_type == "VIP":
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -137,7 +140,7 @@ def webhook():
 💰 سعر الإغلاق: {close_price}
 💡 انتظر دخول جديد ⏳"""
 
-    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة (مضاربة سريعة)
+    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة
     elif signal_type == "REINFORCEMENT":
         message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -162,7 +165,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 2️⃣ تصفية وإرسال الأخبار الاقتصادية
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
 def check_forex_factory_news():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -178,6 +181,9 @@ def check_forex_factory_news():
             impact = event.get("impact")
             title = event.get("title")
             date_str = event.get("date")
+            actual = event.get("actual")
+            forecast = event.get("forecast")
+            previous = event.get("previous")
 
             if impact in ["High", "Medium"]:
                 try:
@@ -186,6 +192,7 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{title}_{date_str}"
 
+                    # أ) إرسال تنبيه قبل الخبر بـ 10 إلى 15 دقيقة
                     if 10 <= time_difference <= 15 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -194,22 +201,41 @@ def check_forex_factory_news():
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)"""
                         
-                        # إرسال رسالة الخبر وحفظ الرد للتمكن من الرد عليها لاحقاً إذا لزم
-                        res = send_to_telegram(news_alert)
-                        sent_alerts.add(event_id)
+                        msg_id = send_to_telegram(news_alert)
+                        if msg_id:
+                            # نخزن الـ message_id لنرد عليه لاحقاً عند صدور النتيجة
+                            sent_alerts[event_id] = {
+                                "message_id": msg_id,
+                                "result_sent": False
+                            }
+
+                    # ب) إرسال النتيجة (بعد وقت الحدث وصدور القيمة الفعلية Actual)
+                    elif -5 <= time_difference < 0 and event_id in sent_alerts:
+                        alert_data = sent_alerts[event_id]
+                        if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
+                            result_message = f"""📊 *نتيجة الخبر الاقتصادي*
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
+📌 الحدث: {title}
+📈 الفعلي (Actual): {actual}
+📉 المتوقع (Forecast): {forecast if forecast else 'غير متوفر'}
+هـ. السابق (Previous): {previous if previous else 'غير متوفر'}"""
+                            
+                            send_to_telegram(result_message, reply_to_message_id=alert_data["message_id"])
+                            alert_data["result_sent"] = True
+
                 except Exception:
                     continue
     except Exception as e:
-        print("خطأ في فحص الأخبار الاقتصادية:", e)
+        print("خطأ في فحص ومتابعة الأخبار الاقتصادية:", e)
 
-# ⚙️ المجدول الزمني
+# ⚙️ المجدول الزمني (يفحص كل دقيقة)
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=check_forex_factory_news, trigger="interval", minutes=1)
 scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running!", 200
+    return "Bot is running with News & Reply tracking!", 200
 
 @app.route('/test-news')
 def test_news():
@@ -266,25 +292,6 @@ def test_medium():
 ⚖️ نسبة المخاطرة للعائد: {rr}"""
     result = send_to_telegram(message)
     return f"Test Medium Webhook Sent. Response: {result}", 200
-
-@app.route('/test-news-format')
-def test_news_format():
-    try:
-        currency = "USD"
-        impact = "High"
-        title = "معدل البطالة الأمريكي (تجريبي)"
-        impact_emoji = "🔴"
-        
-        news_alert = f"""⏳ *تنبيه اقتصادي هام (اختبار الشكل)*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 الحدث: {title}
-💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: تجريبي (يعمل بشكل صحيح)"""
-        
-        result = send_to_telegram(news_alert)
-        return f"News format test sent! Response: {result}", 200
-    except Exception as e:
-        return f"Error: {e}", 500
 
 @app.route('/test-reinforcement')
 def test_reinforcement():
