@@ -14,14 +14,17 @@ TELEGRAM_CHANNEL_ID = "-1004363846255"
 # مجموعة لتسجيل الأخبار لمنع التكرار
 sent_alerts = set()
 
-def send_to_telegram(message):
-    """🤖 دالة إرسال الرسائل إلى قناة تيليجرام"""
+def send_to_telegram(message, reply_to_message_id=None):
+    """🤖 دالة إرسال الرسائل إلى قناة تيليجرام مع دعم الرد المباشر"""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHANNEL_ID,
         "text": message,
         "parse_mode": "Markdown",
     }
+    if reply_to_message_id:
+        payload["reply_to_message_id"] = reply_to_message_id
+
     try:
         response = requests.post(url, json=payload)
         return response.json()
@@ -81,10 +84,10 @@ def webhook():
 
     rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
-    # 🚨 التصنيف الأول: صفقات VIP الرئيسية
+    # 🚨 التصنيف الأول: صفقات VIP الرئيسية (بدون خطوط طويلة، بفاصل جمالي نظيف)
     if signal_type == "VIP":
-        message = f"""🚨🔥 [صفقة VIP رئيسية] 🔥🚨
-━━━━━━━━━━━━━━━━━
+        message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -94,13 +97,12 @@ def webhook():
 🎯 الهدف الأول: {tp1}
 🎯 الهدف الثاني: {tp2}
 🎯 الهدف الثالث: {tp3}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
 
     # ⭐ التصنيف الثاني: فرصة عالية
     elif signal_type == "HIGH":
-        message = f"""⭐⚡ [فرصة عالية] ⚡⭐
-━━━━━━━━━━━━━━━━━
+        message = f"""⭐⚡ *فرصة عالية* ⚡⭐
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -109,13 +111,12 @@ def webhook():
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
 🎯 الهدف الثاني: {tp2}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
 
     # 🔹 التصنيف الثالث: فرصة متوسطة
     elif signal_type == "MEDIUM":
-        message = f"""🔹📊 [فرصة متوسطة] 📊🔹
-━━━━━━━━━━━━━━━━━
+        message = f"""🔹📊 *فرصة متوسطة* 📊🔹
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -123,44 +124,40 @@ def webhook():
 💰 الدخول: {close_price}
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
 
     # 🛑 تنبيهات الانعكاس أو الخروج
     elif signal_type == "REVERSAL":
-        message = f"""🛑⚠️ [تنبيه انعكاس / خروج مبكر] ⚠️🛑
-━━━━━━━━━━━━━━━━━
+        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
 📉 الحالة: {action}
 💰 سعر الإغلاق: {close_price}
-💡 انتظر دخول جديد ⏳
-━━━━━━━━━━━━━━━━━"""
+💡 انتظر دخول جديد ⏳"""
 
     # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة (مضاربة سريعة)
     elif signal_type == "REINFORCEMENT":
-        message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
-━━━━━━━━━━━━━━━━━
+        message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
 🎯 الحالة: {action}
 💰 نطاق السعر: {close_price}
 🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
-💡 فرصة مضاربة سريعة مستقلة ⏳
-━━━━━━━━━━━━━━━━━"""
+💡 فرصة مضاربة سريعة مستقلة ⏳"""
 
     # 📂 التصنيف الافتراضي
     else:
-        message = f"""📈 [إشارة تداول عامة] 📈
-━━━━━━━━━━━━━━━━━
+        message = f"""📈 *إشارة تداول عامة* 📈
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
 🎯 الاتجاه: {action}
-💰 السعر: {close_price}
-━━━━━━━━━━━━━━━━━"""
+💰 السعر: {close_price}"""
 
     send_to_telegram(message)
     return "OK", 200
@@ -191,13 +188,14 @@ def check_forex_factory_news():
 
                     if 10 <= time_difference <= 15 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
-                        news_alert = f"""⏳ **تنبيه اقتصادي هام (قريب جداً)**
-━━━━━━━━━━━━━━━━━
+                        news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)
-━━━━━━━━━━━━━━━━━"""
-                        send_to_telegram(news_alert)
+⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)"""
+                        
+                        # إرسال رسالة الخبر وحفظ الرد للتمكن من الرد عليها لاحقاً إذا لزم
+                        res = send_to_telegram(news_alert)
                         sent_alerts.add(event_id)
                 except Exception:
                     continue
@@ -221,8 +219,8 @@ def test_news():
 @app.route('/test-webhook')
 def test_webhook():
     rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
-    message = f"""🚨🔥 [صفقة VIP رئيسية] 🔥🚨
-━━━━━━━━━━━━━━━━━
+    message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
@@ -232,16 +230,15 @@ def test_webhook():
 🎯 الهدف الأول: 2360.00
 🎯 الهدف الثاني: 2370.00
 🎯 الهدف الثالث: 2380.00
-⚖️ نسبة المخاطرة للعائد: {rr}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr}"""
     result = send_to_telegram(message)
     return f"Test Webhook Sent. Response: {result}", 200
 
 @app.route('/test-high')
 def test_high():
     rr = calculate_risk_reward("بيع", "1.0920", "1.0950", "1.0890")
-    message = f"""⭐⚡ [فرصة عالية] ⚡⭐
-━━━━━━━━━━━━━━━━━
+    message = f"""⭐⚡ *فرصة عالية* ⚡⭐
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: EURUSD
 ⏳ الفريم: 30m
@@ -250,16 +247,15 @@ def test_high():
 🛑 وقف الخسارة: 1.0950
 🎯 الهدف الأول: 1.0890
 🎯 الهدف الثاني: 1.0860
-⚖️ نسبة المخاطرة للعائد: {rr}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr}"""
     result = send_to_telegram(message)
     return f"Test High Webhook Sent. Response: {result}", 200
 
 @app.route('/test-medium')
 def test_medium():
     rr = calculate_risk_reward("شراء", "1.3100", "1.3070", "1.3140")
-    message = f"""🔹📊 [فرصة متوسطة] 📊🔹
-━━━━━━━━━━━━━━━━━
+    message = f"""🔹📊 *فرصة متوسطة* 📊🔹
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: GBPUSD
 ⏳ الفريم: 15m
@@ -267,8 +263,7 @@ def test_medium():
 💰 الدخول: 1.3100
 🛑 وقف الخسارة: 1.3070
 🎯 الهدف الأول: 1.3140
-⚖️ نسبة المخاطرة للعائد: {rr}
-━━━━━━━━━━━━━━━━━"""
+⚖️ نسبة المخاطرة للعائد: {rr}"""
     result = send_to_telegram(message)
     return f"Test Medium Webhook Sent. Response: {result}", 200
 
@@ -280,12 +275,11 @@ def test_news_format():
         title = "معدل البطالة الأمريكي (تجريبي)"
         impact_emoji = "🔴"
         
-        news_alert = f"""⏳ **تنبيه اقتصادي هام (اختبار الشكل)**
-━━━━━━━━━━━━━━━━━
+        news_alert = f"""⏳ *تنبيه اقتصادي هام (اختبار الشكل)*
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
-⏰ الوقت: تجريبي (يعمل بشكل صحيح)
-━━━━━━━━━━━━━━━━━"""
+⏰ الوقت: تجريبي (يعمل بشكل صحيح)"""
         
         result = send_to_telegram(news_alert)
         return f"News format test sent! Response: {result}", 200
@@ -294,16 +288,15 @@ def test_news_format():
 
 @app.route('/test-reinforcement')
 def test_reinforcement():
-    message = f"""📦⚡ [منطقة تجميع وسيولة نشطة] ⚡📦
-━━━━━━━━━━━━━━━━━
+    message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
 🎯 الحالة: 🟢 شراء تعزيزي وتجميع
 💰 نطاق السعر: 4280.00 - 4285.00
 🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
-💡 فرصة مضاربة سريعة مستقلة ⏳
-━━━━━━━━━━━━━━━━━"""
+💡 فرصة مضاربة سريعة مستقلة ⏳"""
     result = send_to_telegram(message)
     return f"Test Reinforcement Sent. Response: {result}", 200
 
