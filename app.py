@@ -15,6 +15,32 @@ TELEGRAM_CHANNEL_ID = "-1004363846255"
 sent_alerts = {} 
 last_daily_summary_date = ""
 
+# 📖 قاموس ترجمة أسماء الأخبار الاقتصادية الشائعة إلى العربية
+NEWS_TRANSLATIONS = {
+    "Cash Rate": "سعر الفائدة",
+    "RBA Rate Statement": "بيان الفائدة للبنك المركزي الاسترالي",
+    "RBA Press Conference": "مؤتمر رئيس البنك المركزي الاسترالي",
+    "ECB President Lagarde Speaks": "خطاب رئيسة البنك المركزي الأوروبي (لاغارد)",
+    "GDP m/m": "الناتج المحلي الإجمالي (شهري)",
+    "GDP q/q": "الناتج المحلي الإجمالي (ربعي)",
+    "CB Consumer Confidence": "مؤشر ثقة المستهلك الصادر عن المؤتمر",
+    "JOLTS Job Openings": "فرص العمل المتاحة (JOLTS)",
+    "Non-Change Employment Change": "التغير في الوظائف غير الزراعية",
+    "Unemployment Rate": "معدل البطالة",
+    "CPI m/m": "مؤشر أسعار المستهلكين التضخم (شهري)",
+    "CPI y/y": "مؤشر أسعار المستهلكين التضخم السنوي",
+    "Core CPI m/m": "مؤشر أسعار المستهلكين الأساسي (شهري)",
+    "FOMC Statement": "بيان الفيدرالي الأمريكي",
+    "Federal Funds Rate": "سعر الفائدة الفيدرالي",
+    "FOMC Press Conference": "مؤتمر رئيس الفيدرالي الأمريكي",
+    "Retail Sales m/m": "مبيعات التجزئة (شهري)",
+    "ISM Manufacturing PMI": "مؤشر مديري المشتريات الصناعي (ISM)"
+}
+
+def translate_news(title):
+    """ترجمة اسم الخبر أو إرجاعه كما هو إذا لم يكن موجوداً في القاموس"""
+    return NEWS_TRANSLATIONS.get(title, title)
+
 def send_to_telegram(message, reply_to_message_id=None):
     """🤖 دالة إرسال الرسائل إلى قناة تيليجرام مع دعم الرد المباشر"""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -37,7 +63,7 @@ def send_to_telegram(message, reply_to_message_id=None):
         return None
 
 def calculate_risk_reward(action, entry, sl, tp):
-    """📊 حساب نسبة المخاطرة إلى العائد تلقائياً"""
+    """📊 حساب نسبة المخاطرة للعائد تلقائياً"""
     try:
         entry_f = float(entry)
         sl_f = float(sl)
@@ -60,8 +86,6 @@ def calculate_risk_reward(action, entry, sl, tp):
 # 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook)
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
-    print("Raw request data received:", request.data)
-
     data = request.get_json(force=True, silent=True)
     if not data:
         if request.form:
@@ -73,7 +97,6 @@ def webhook():
                 data = {}
 
     if not data:
-        print("⚠️ تنبيه: لم يتم استلام بيانات صحيحة من تريدينج فيو.")
         return "Invalid Data", 400
 
     signal_type = data.get("type", "VIP").upper()
@@ -155,7 +178,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (باللغة العربية)
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -175,13 +198,12 @@ def send_daily_economic_briefing(events, now_ksa):
     if not today_events:
         return
 
-    # ترتيب الأخبار تصاعدياً حسب الوقت
     today_events.sort(key=lambda x: x[0])
 
     message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
     for time_ksa, event in today_events:
-        title = event.get("title")
-        currency = event.get("currency")
+        title = translate_news(event.get("title"))
+        currency = event.get("currency", "")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
         message += f"⏰ {time_ksa.strftime('%I:%M %p')} | {currency} - {title} ({impact_str})\n"
@@ -201,15 +223,16 @@ def check_forex_factory_news():
         now_ksa = datetime.utcnow() + timedelta(hours=3)
         today_str = now_ksa.strftime('%Y-%m-%d')
 
-        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً بتوقيت السعودية (مع بداية اليوم الجديد)
+        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً بتوقيت السعودية
         if now_ksa.hour == 1 and now_ksa.minute == 0 and last_daily_summary_date != today_str:
             send_daily_economic_briefing(events, now_ksa)
             last_daily_summary_date = today_str
 
         for event in events:
-            currency = event.get("currency")
+            currency = event.get("currency", "")
             impact = event.get("impact")
-            title = event.get("title")
+            raw_title = event.get("title")
+            title = translate_news(raw_title)
             date_str = event.get("date")
             actual = event.get("actual")
             forecast = event.get("forecast")
@@ -220,9 +243,9 @@ def check_forex_factory_news():
                     event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                     event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
-                    event_id = f"{title}_{date_str}"
+                    event_id = f"{raw_title}_{date_str}"
 
-                    # أ) إرسال تنبيه قبل الخبر (بين 10 إلى 20 دقيقة)
+                    # أ) إرسال تنبيه قبل الخبر بالعربي
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -238,7 +261,7 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة (متابعة بعد صدور الخبر بـ 0 إلى 15 دقيقة لضمان التقاط التحديث)
+                    # ب) إرسال النتيجة بالعربي
                     elif 0 <= time_difference <= 15 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
@@ -264,12 +287,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with 1 AM Daily Briefing!", 200
-
-@app.route('/test-news')
-def test_news():
-    check_forex_factory_news()
-    return "News check executed successfully!", 200
+    return "Bot is running with Arabic News Translation!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -279,7 +297,7 @@ def test_briefing():
         if response.status_code == 200:
             now_ksa = datetime.utcnow() + timedelta(hours=3)
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Daily briefing test executed and sent to Telegram successfully!", 200
+            return "Arabic daily briefing test executed successfully!", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
     return "Failed to fetch briefing", 500
@@ -301,53 +319,6 @@ def test_webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr}"""
     result = send_to_telegram(message)
     return f"Test Webhook Sent. Response: {result}", 200
-
-@app.route('/test-high')
-def test_high():
-    rr = calculate_risk_reward("بيع", "1.0920", "1.0950", "1.0890")
-    message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: EURUSD
-⏳ الفريم: 30m
-🎯 الاتجاه: بيع
-💰 الدخول: 1.0920
-🛑 وقف الخسارة: 1.0950
-🎯 الهدف الأول: 1.0890
-🎯 الهدف الثاني: 1.0860
-⚖️ نسبة المخاطرة للعائد: {rr}"""
-    result = send_to_telegram(message)
-    return f"Test High Webhook Sent. Response: {result}", 200
-
-@app.route('/test-medium')
-def test_medium():
-    rr = calculate_risk_reward("شراء", "1.3100", "1.3070", "1.3140")
-    message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: GBPUSD
-⏳ الفريم: 15m
-🎯 الاتجاه: شراء
-💰 الدخول: 1.3100
-🛑 وقف الخسارة: 1.3070
-🎯 الهدف الأول: 1.3140
-⚖️ نسبة المخاطرة للعائد: {rr}"""
-    result = send_to_telegram(message)
-    return f"Test Medium Webhook Sent. Response: {result}", 200
-
-@app.route('/test-reinforcement')
-def test_reinforcement():
-    message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: XAUUSD
-⏳ الفريم: 15m
-🎯 الحالة: 🟢 شراء تعزيزي وتجميع
-💰 نطاق السعر: 4280.00 - 4285.00
-🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
-💡 فرصة مضاربة سريعة مستقلة ⏳"""
-    result = send_to_telegram(message)
-    return f"Test Reinforcement Sent. Response: {result}", 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
