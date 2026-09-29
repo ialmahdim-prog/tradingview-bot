@@ -154,7 +154,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (مع توسيع النافذة الزمنية لضمان عدم تفويت أي خبر)
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
 def check_forex_factory_news():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -181,7 +181,7 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{title}_{date_str}"
 
-                    # أ) إرسال تنبيه قبل الخبر (تم توسيع النافذة من 10 إلى 20 دقيقة لضمان الموثوقية التامة)
+                    # أ) إرسال تنبيه قبل الخبر (بين 10 إلى 20 دقيقة)
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -197,8 +197,8 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة (بعد صدور الخبر وقيمته الفعليّة Actual)
-                    elif -5 <= time_difference < 0 and event_id in sent_alerts:
+                    # ب) إرسال النتيجة (متابعة بعد صدور الخبر بـ 0 إلى 15 دقيقة لضمان التقاط التحديث)
+                    elif 0 <= time_difference <= 15 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
