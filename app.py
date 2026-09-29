@@ -11,7 +11,7 @@ app = Flask(__name__)
 TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
-# مجموعة لتسجيل الأخبار لمنع التكرار (تخزين الـ event_id وحفظ الـ message_id للرد عليها لاحقاً)
+# مجموعة لتسجيل الأخبار لمنع التكرار
 sent_alerts = {} 
 
 def send_to_telegram(message, reply_to_message_id=None):
@@ -87,7 +87,6 @@ def webhook():
 
     rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
-    # 🚨 التصنيف الأول: صفقات VIP الرئيسية
     if signal_type == "VIP":
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -101,8 +100,6 @@ def webhook():
 🎯 الهدف الثاني: {tp2}
 🎯 الهدف الثالث: {tp3}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-
-    # ⭐ التصنيف الثاني: فرصة عالية
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -115,8 +112,6 @@ def webhook():
 🎯 الهدف الأول: {tp1}
 🎯 الهدف الثاني: {tp2}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-
-    # 🔹 التصنيف الثالث: فرصة متوسطة
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -128,8 +123,6 @@ def webhook():
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-
-    # 🛑 تنبيهات الانعكاس أو الخروج
     elif signal_type == "REVERSAL":
         message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -139,8 +132,6 @@ def webhook():
 📉 الحالة: {action}
 💰 سعر الإغلاق: {close_price}
 💡 انتظر دخول جديد ⏳"""
-
-    # 📦 التصنيف الجديد: تنبيه مناطق التجميع والسيولة
     elif signal_type == "REINFORCEMENT":
         message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -151,8 +142,6 @@ def webhook():
 💰 نطاق السعر: {close_price}
 🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
 💡 فرصة مضاربة سريعة مستقلة ⏳"""
-
-    # 📂 التصنيف الافتراضي
     else:
         message = f"""📈 *إشارة تداول عامة* 📈
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -165,7 +154,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (مع توسيع النافذة الزمنية لضمان عدم تفويت أي خبر)
 def check_forex_factory_news():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
@@ -192,8 +181,8 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{title}_{date_str}"
 
-                    # أ) إرسال تنبيه قبل الخبر بـ 10 إلى 15 دقيقة
-                    if 10 <= time_difference <= 15 and event_id not in sent_alerts:
+                    # أ) إرسال تنبيه قبل الخبر (تم توسيع النافذة من 10 إلى 20 دقيقة لضمان الموثوقية التامة)
+                    if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
@@ -203,13 +192,12 @@ def check_forex_factory_news():
                         
                         msg_id = send_to_telegram(news_alert)
                         if msg_id:
-                            # نخزن الـ message_id لنرد عليه لاحقاً عند صدور النتيجة
                             sent_alerts[event_id] = {
                                 "message_id": msg_id,
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة (بعد وقت الحدث وصدور القيمة الفعلية Actual)
+                    # ب) إرسال النتيجة (بعد صدور الخبر وقيمته الفعليّة Actual)
                     elif -5 <= time_difference < 0 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
@@ -228,14 +216,14 @@ def check_forex_factory_news():
     except Exception as e:
         print("خطأ في فحص ومتابعة الأخبار الاقتصادية:", e)
 
-# ⚙️ المجدول الزمني (يفحص كل دقيقة)
+# ⚙️ المجدول الزمني
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=check_forex_factory_news, trigger="interval", minutes=1)
 scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with News & Reply tracking!", 200
+    return "Bot is running with optimized News window!", 200
 
 @app.route('/test-news')
 def test_news():
