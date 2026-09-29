@@ -125,7 +125,7 @@ def webhook():
 
     if signal_type == "VIP":
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -138,7 +138,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️▪
+▪️▪️▪️️▪️▪️▪️▪️▪️▪
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -149,7 +149,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -189,7 +189,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (خط صغير ومنسق بدون عناوين ضخمة)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -208,7 +208,7 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
@@ -216,7 +216,7 @@ def send_daily_economic_briefing(events, now_ksa):
     message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\n"
     for time_ksa, event in today_events:
         title = translate_news(event.get("title"))
-        currency = event.get("currency", "USD")  # جلب رمز العملة الحقيقي لكل خبر
+        currency = event.get("currency", "USD")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
         message += f"⏰ `{time_ksa.strftime('%I:%M %p')}` | *{currency}* - {title}\n📌 التأثير: {impact_str}\n\n"
@@ -279,7 +279,7 @@ def check_forex_factory_news():
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️️▪️▪️▪️▪️▪️▪️▪️
 📌 الحدث: {title}
 💱 العملة: *{currency}*
 📈 الفعلي (Actual): {actual}
@@ -301,7 +301,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with optimized font size and correct currency tags!", 200
+    return "Bot is running with correct routes and compact formatting!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -314,7 +314,7 @@ def test_briefing():
             global last_daily_summary_date
             last_daily_summary_date = "" 
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Test briefing executed successfully with compact formatting and correct currencies!", 200
+            return "Test briefing executed successfully!", 200
         else:
             return f"Failed to fetch from external source, status code: {response.status_code}", 500
     except Exception as e:
