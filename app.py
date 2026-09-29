@@ -209,7 +209,7 @@ def send_daily_economic_briefing(events, now_ksa):
 
     send_to_telegram(message)
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (مُحسّنة وموسعة)
 def check_forex_factory_news():
     global last_daily_summary_date
     try:
@@ -244,7 +244,7 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{raw_title}_{date_str}"
 
-                    # أ) إرسال تنبيه قبل الخبر بالعربي
+                    # أ) إرسال تنبيه قبل الخبر بالعربي (بين 10 إلى 20 دقيقة)
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -260,8 +260,8 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة بالعربي
-                    elif 0 <= time_difference <= 15 and event_id in sent_alerts:
+                    # ب) إرسال النتيجة بالعربي (موسعة لتبحث حتى 60 دقيقة بعد وقت الخبر)
+                    elif -5 <= time_difference <= 60 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
@@ -274,7 +274,7 @@ def check_forex_factory_news():
                             send_to_telegram(result_message, reply_to_message_id=alert_data["message_id"])
                             alert_data["result_sent"] = True
 
-                except Exception:
+                except Exception as e:
                     continue
     except Exception as e:
         print("خطأ في فحص ومتابعة الأخبار الاقتصادية:", e)
@@ -286,7 +286,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running perfectly with clean layout!", 200
+    return "Bot is running with enhanced result tracker!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
