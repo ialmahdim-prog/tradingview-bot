@@ -146,7 +146,7 @@ def webhook():
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "REVERSAL":
-        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
+        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️️🛑
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
@@ -199,7 +199,7 @@ def send_daily_economic_briefing(events, now_ksa):
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️️▪️▪️▪️\n"
     for time_ksa, event in today_events:
         title = translate_news(event.get("title"))
         currency = event.get("currency", "USD")
@@ -222,8 +222,8 @@ def check_forex_factory_news():
         now_ksa = datetime.utcnow() + timedelta(hours=3)
         today_str = now_ksa.strftime('%Y-%m-%d')
 
-        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً
-        if now_ksa.hour == 1 and now_ksa.minute == 0 and last_daily_summary_date != today_str:
+        # إرسال الملخص اليومي تلقائياً خلال الفترة من 1 فجراً إلى 3 فجراً لضمان عدم تفويته
+        if 1 <= now_ksa.hour < 3 and last_daily_summary_date != today_str:
             send_daily_economic_briefing(events, now_ksa)
             last_daily_summary_date = today_str
 
@@ -265,7 +265,7 @@ def check_forex_factory_news():
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️️▪️▪️▪️▪️▪️▪️▪️▪️
 📌 الحدث: {title}
 📈 الفعلي (Actual): {actual}
 📉 المتوقع (Forecast): {forecast if forecast else 'غير متوفر'}
@@ -305,7 +305,7 @@ def test_briefing():
 def test_webhook():
     rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
     message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
