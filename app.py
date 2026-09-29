@@ -15,7 +15,7 @@ TELEGRAM_CHANNEL_ID = "-1004363846255"
 sent_alerts = {} 
 last_daily_summary_date = ""
 
-# 📖 قاموس ترجمة أسماء الأخبار الاقتصادية الشائعة إلى العربية
+# 📖 قاموس ترجمة أسماء الأخبار الاقتصادية الشاملة
 NEWS_TRANSLATIONS = {
     "Cash Rate": "سعر الفائدة",
     "RBA Rate Statement": "بيان الفائدة للبنك المركزي الاسترالي",
@@ -23,12 +23,12 @@ NEWS_TRANSLATIONS = {
     "ECB President Lagarde Speaks": "خطاب رئيسة البنك المركزي الأوروبي (لاغارد)",
     "GDP m/m": "الناتج المحلي الإجمالي (شهري)",
     "GDP q/q": "الناتج المحلي الإجمالي (ربعي)",
-    "CB Consumer Confidence": "مؤشر ثقة المستهلك الصادر عن المؤتمر",
+    "CB Consumer Confidence": "مؤشر ثقة المستهلك",
     "JOLTS Job Openings": "فرص العمل المتاحة (JOLTS)",
     "Non-Farm Employment Change": "التغير في الوظائف غير الزراعية",
     "Unemployment Rate": "معدل البطالة",
-    "CPI m/m": "مؤشر أسعار المستهلكين التضخم (شهري)",
-    "CPI y/y": "مؤشر أسعار المستهلكين التضخم السنوي",
+    "CPI m/m": "مؤشر أسعار المستهلكين (شهري)",
+    "CPI y/y": "مؤشر أسعار المستهلكين السنوي",
     "Core CPI m/m": "مؤشر أسعار المستهلكين الأساسي (شهري)",
     "FOMC Statement": "بيان الفيدرالي الأمريكي",
     "Federal Funds Rate": "سعر الفائدة الفيدرالي",
@@ -38,7 +38,6 @@ NEWS_TRANSLATIONS = {
 }
 
 def translate_news(title):
-    """ترجمة اسم الخبر أو إرجاعه كما هو إذا لم يكن موجوداً في القاموس"""
     return NEWS_TRANSLATIONS.get(title, title)
 
 def send_to_telegram(message, reply_to_message_id=None):
@@ -134,7 +133,6 @@ def webhook():
 💰 الدخول: {close_price}
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
-🎯 الهدف الثاني: {tp2}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
@@ -178,7 +176,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (دقيقة لتاريخ اليوم فقط)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -191,7 +189,6 @@ def send_daily_economic_briefing(events, now_ksa):
                 event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
                 
-                # التأكد التام أن الخبر يقع في نفس تاريخ اليوم بتوقيت السعودية فقط
                 if event_time_ksa.strftime('%Y-%m-%d') == today_str:
                     today_events.append((event_time_ksa, event))
             except Exception:
@@ -205,7 +202,7 @@ def send_daily_economic_briefing(events, now_ksa):
     message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
     for time_ksa, event in today_events:
         title = translate_news(event.get("title"))
-        currency = event.get("currency", "")
+        currency = event.get("currency", "USD")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
         message += f"⏰ {time_ksa.strftime('%I:%M %p')} | {currency} - {title} ({impact_str})\n"
@@ -225,13 +222,13 @@ def check_forex_factory_news():
         now_ksa = datetime.utcnow() + timedelta(hours=3)
         today_str = now_ksa.strftime('%Y-%m-%d')
 
-        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً بتوقيت السعودية
+        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً
         if now_ksa.hour == 1 and now_ksa.minute == 0 and last_daily_summary_date != today_str:
             send_daily_economic_briefing(events, now_ksa)
             last_daily_summary_date = today_str
 
         for event in events:
-            currency = event.get("currency", "")
+            currency = event.get("currency", "USD")
             impact = event.get("impact")
             raw_title = event.get("title")
             title = translate_news(raw_title)
@@ -272,7 +269,7 @@ def check_forex_factory_news():
 📌 الحدث: {title}
 📈 الفعلي (Actual): {actual}
 📉 المتوقع (Forecast): {forecast if forecast else 'غير متوفر'}
-هـ. السابق (Previous): {previous if previous else 'غير متوفر'}"""
+📌 السابق (Previous): {previous if previous else 'غير متوفر'}"""
                             
                             send_to_telegram(result_message, reply_to_message_id=alert_data["message_id"])
                             alert_data["result_sent"] = True
@@ -289,7 +286,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with precise daily economic briefing!", 200
+    return "Bot is running perfectly with clean layout!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -299,7 +296,7 @@ def test_briefing():
         if response.status_code == 200:
             now_ksa = datetime.utcnow() + timedelta(hours=3)
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Precise daily briefing test executed successfully!", 200
+            return "Test briefing executed successfully!", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
     return "Failed to fetch briefing", 500
