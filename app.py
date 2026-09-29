@@ -40,7 +40,13 @@ NEWS_TRANSLATIONS = {
     "ADP Non-Farm Employment Change": "تغير الوظائف غير الزراعية (ADP)",
     "Core PCE Price Index m/m": "مؤشر أسعار نفقات الاستهلاك الشخصي الأساسي (شهري)",
     "Final GDP q/q": "الناتج المحلي الإجمالي النهائي (ربعي)",
-    "Final GDP Price Index q/q": "مؤشر أسعار الناتج المحلي الإجمالي النهائي (ربعي)"
+    "Final GDP Price Index q/q": "مؤشر أسعار الناتج المحلي الإجمالي النهائي (ربعي)",
+    "Import Prices m/m": "أسعار الاستيراد (شهري)",
+    "Retail Sales m/m": "مبيعات التجزئة (شهري)",
+    "Prelim German CPI m/m": "مؤشر أسعار المستهلك الألماني الأولي (شهري)",
+    "French Consumer Spending m/m": "الإنفاق الاستهلاكي الفرنسي (شهري)",
+    "German Unemployment Change": "تغير معدل البطالة في ألمانيا",
+    "KOF Economic Barometer": "مؤشر كوف الاقتصادي"
 }
 
 def translate_news(title):
@@ -131,7 +137,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️▪️️
+▪️▪️▪️▪️▪️▪️▪️▪️▪
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -142,7 +148,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️▪️▪️▪️▪️▪️️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -153,7 +159,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "REVERSAL":
         message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -182,7 +188,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (مع مسافات وتنسيق مرتب)
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -201,21 +207,20 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        # إرسال تنبيه في حال لم تكن هناك أحداث اليوم لنتأكد أن القناة تستقبل
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️️▪️▪️▪️\n\n"
     for time_ksa, event in today_events:
         title = translate_news(event.get("title"))
         currency = event.get("currency", "USD")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
-        message += f"⏰ `{time_ksa.strftime('%I:%M %p')}` | {currency} - {title} ({impact_str})\n"
+        message += f"⏰ `{time_ksa.strftime('%I:%M %p')}` | *{currency}* - {title}\n📌 التأثير: {impact_str}\n\n"
 
-    message += "\n🕒 *جميع الأوقات بتوقيت السعودية*"
+    message += "🕒 *جميع الأوقات بتوقيت السعودية*"
     send_to_telegram(message)
 
 # 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
@@ -226,7 +231,6 @@ def check_forex_factory_news():
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
-            print(f"Failed to fetch calendar, status code: {response.status_code}")
             return
 
         events = response.json()
@@ -259,7 +263,8 @@ def check_forex_factory_news():
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
-💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
+💱 العملة: *{currency}*
+⚠️ الأثر: {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)"""
                         
                         msg_id = send_to_telegram(news_alert)
@@ -273,8 +278,9 @@ def check_forex_factory_news():
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️▪️▪️▪️▪️️▪️▪️▪️▪️
+▪️️▪️▪️▪️▪️▪️▪️▪️
 📌 الحدث: {title}
+💱 العملة: *{currency}*
 📈 الفعلي (Actual): {actual}
 📉 المتوقع (Forecast): {forecast if forecast else 'غير متوفر'}
 📌 السابق (Previous): {previous if previous else 'غير متوفر'}"""
@@ -294,7 +300,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running perfectly with headers fix!", 200
+    return "Bot is running perfectly with clean spacing and currency fix!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -307,7 +313,7 @@ def test_briefing():
             global last_daily_summary_date
             last_daily_summary_date = "" 
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Test briefing executed successfully and sent to Telegram!", 200
+            return "Test briefing executed successfully with clean formatting!", 200
         else:
             return f"Failed to fetch from external source, status code: {response.status_code}", 500
     except Exception as e:
@@ -332,5 +338,5 @@ def test_webhook():
     return f"Test Webhook Sent. Response: {result}", 200
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.com("PORT", 5000) if hasattr(os, "environ") else 5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
