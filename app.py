@@ -15,7 +15,7 @@ TELEGRAM_CHANNEL_ID = "-1004363846255"
 sent_alerts = {} 
 last_daily_summary_date = ""
 
-# 📖 قاموس ترجمة أسماء الأخبار الاقتصادية الشاملة
+# 📖 قاموس ترجمة أسماء الأخبار الاقتصادية الشاملة والمحدثة
 NEWS_TRANSLATIONS = {
     "Cash Rate": "سعر الفائدة",
     "RBA Rate Statement": "بيان الفائدة للبنك المركزي الاسترالي",
@@ -34,7 +34,13 @@ NEWS_TRANSLATIONS = {
     "Federal Funds Rate": "سعر الفائدة الفيدرالي",
     "FOMC Press Conference": "مؤتمر رئيس الفيدرالي الأمريكي",
     "Retail Sales m/m": "مبيعات التجزئة (شهري)",
-    "ISM Manufacturing PMI": "مؤشر مديري المشتريات الصناعي (ISM)"
+    "ISM Manufacturing PMI": "مؤشر مديري المشتريات الصناعي (ISM)",
+    "Trimmed Mean CPI m/m": "مؤشر أسعار المستهلكين المذبذب (شهري)",
+    "German Prelim CPI m/m": "مؤشر أسعار المستهلكين الألماني الأولي (شهري)",
+    "ADP Non-Farm Employment Change": "تغير الوظائف غير الزراعية (ADP)",
+    "Core PCE Price Index m/m": "مؤشر أسعار نفقات الاستهلاك الشخصي الأساسي (شهري)",
+    "Final GDP q/q": "الناتج المحلي الإجمالي النهائي (ربعي)",
+    "Final GDP Price Index q/q": "مؤشر أسعار الناتج المحلي الإجمالي النهائي (ربعي)"
 }
 
 def translate_news(title):
@@ -112,7 +118,7 @@ def webhook():
 
     if signal_type == "VIP":
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -125,7 +131,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -136,7 +142,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -146,7 +152,7 @@ def webhook():
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "REVERSAL":
-        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️️🛑
+        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
@@ -166,7 +172,7 @@ def webhook():
 💡 فرصة مضاربة سريعة مستقلة ⏳"""
     else:
         message = f"""📈 *إشارة تداول عامة* 📈
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -176,7 +182,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (منسقة ومرتبة)
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -205,11 +211,13 @@ def send_daily_economic_briefing(events, now_ksa):
         currency = event.get("currency", "USD")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
-        message += f"⏰ {time_ksa.strftime('%I:%M %p')} | {currency} - {title} ({impact_str})\n"
+        # تنسيق السطر بشكل مرتب: الوقت | العملة - الحدث (الأثر) بتوقيت السعودية
+        message += f"⏰ `{time_ksa.strftime('%I:%M %p')}` | {currency} - {title} ({impact_str})\n"
 
+    message += "\n🕒 *جميع الأوقات بتوقيت السعودية*"
     send_to_telegram(message)
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (مُحسّنة وموسعة)
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
 def check_forex_factory_news():
     global last_daily_summary_date
     try:
@@ -222,7 +230,7 @@ def check_forex_factory_news():
         now_ksa = datetime.utcnow() + timedelta(hours=3)
         today_str = now_ksa.strftime('%Y-%m-%d')
 
-        # إرسال الملخص اليومي تلقائياً خلال الفترة من 1 فجراً إلى 3 فجراً لضمان عدم تفويته
+        # إرسال الملخص اليومي تلقائياً خلال الفترة من 1 فجراً إلى 3 فجراً (تصفير التاريخ لتتم إعادة الإرسال عند طلب التجربة)
         if 1 <= now_ksa.hour < 3 and last_daily_summary_date != today_str:
             send_daily_economic_briefing(events, now_ksa)
             last_daily_summary_date = today_str
@@ -248,7 +256,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)"""
@@ -260,12 +268,12 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة بالعربي (موسعة لتبحث حتى 60 دقيقة بعد وقت الخبر)
+                    # ب) إرسال النتيجة بالعربي
                     elif -5 <= time_difference <= 60 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📌 الحدث: {title}
 📈 الفعلي (Actual): {actual}
 📉 المتوقع (Forecast): {forecast if forecast else 'غير متوفر'}
@@ -286,7 +294,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with enhanced result tracker!", 200
+    return "Bot is running with enhanced translations and formatting!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -295,8 +303,11 @@ def test_briefing():
         response = requests.get(url)
         if response.status_code == 200:
             now_ksa = datetime.utcnow() + timedelta(hours=3)
+            # لتجربة فورية: نفرغ التاريخ المؤقت ونرسل الملخص مباشرة
+            global last_daily_summary_date
+            last_daily_summary_date = "" 
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Test briefing executed successfully!", 200
+            return "Test briefing executed successfully and sent to Telegram!", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
     return "Failed to fetch briefing", 500
@@ -305,7 +316,7 @@ def test_briefing():
 def test_webhook():
     rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
     message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
