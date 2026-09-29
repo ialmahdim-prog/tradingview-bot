@@ -25,7 +25,7 @@ NEWS_TRANSLATIONS = {
     "GDP q/q": "الناتج المحلي الإجمالي (ربعي)",
     "CB Consumer Confidence": "مؤشر ثقة المستهلك الصادر عن المؤتمر",
     "JOLTS Job Openings": "فرص العمل المتاحة (JOLTS)",
-    "Non-Change Employment Change": "التغير في الوظائف غير الزراعية",
+    "Non-Farm Employment Change": "التغير في الوظائف غير الزراعية",
     "Unemployment Rate": "معدل البطالة",
     "CPI m/m": "مؤشر أسعار المستهلكين التضخم (شهري)",
     "CPI y/y": "مؤشر أسعار المستهلكين التضخم السنوي",
@@ -178,7 +178,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (باللغة العربية)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (دقيقة لتاريخ اليوم فقط)
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -190,6 +190,8 @@ def send_daily_economic_briefing(events, now_ksa):
             try:
                 event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
+                
+                # التأكد التام أن الخبر يقع في نفس تاريخ اليوم بتوقيت السعودية فقط
                 if event_time_ksa.strftime('%Y-%m-%d') == today_str:
                     today_events.append((event_time_ksa, event))
             except Exception:
@@ -287,7 +289,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with Arabic News Translation!", 200
+    return "Bot is running with precise daily economic briefing!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -297,7 +299,7 @@ def test_briefing():
         if response.status_code == 200:
             now_ksa = datetime.utcnow() + timedelta(hours=3)
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Arabic daily briefing test executed successfully!", 200
+            return "Precise daily briefing test executed successfully!", 200
     except Exception as e:
         return f"Error: {str(e)}", 500
     return "Failed to fetch briefing", 500
