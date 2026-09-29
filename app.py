@@ -13,6 +13,7 @@ TELEGRAM_CHANNEL_ID = "-1004363846255"
 
 # مجموعة لتسجيل الأخبار لمنع التكرار
 sent_alerts = {} 
+last_daily_summary_date = ""
 
 def send_to_telegram(message, reply_to_message_id=None):
     """🤖 دالة إرسال الرسائل إلى قناة تيليجرام مع دعم الرد المباشر"""
@@ -154,8 +155,42 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
+def send_daily_economic_briefing(events, now_ksa):
+    today_str = now_ksa.strftime('%Y-%m-%d')
+    today_events = []
+    
+    for event in events:
+        date_str = event.get("date")
+        impact = event.get("impact")
+        if impact in ["High", "Medium"] and date_str:
+            try:
+                event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
+                if event_time_ksa.strftime('%Y-%m-%d') == today_str:
+                    today_events.append((event_time_ksa, event))
+            except Exception:
+                continue
+
+    if not today_events:
+        return
+
+    # ترتيب الأخبار تصاعدياً حسب الوقت
+    today_events.sort(key=lambda x: x[0])
+
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
+    for time_ksa, event in today_events:
+        title = event.get("title")
+        currency = event.get("currency")
+        impact = event.get("impact")
+        impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
+        message += f"⏰ {time_ksa.strftime('%I:%M %p')} | {currency} - {title} ({impact_str})\n"
+
+    send_to_telegram(message)
+
 # 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
 def check_forex_factory_news():
+    global last_daily_summary_date
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
         response = requests.get(url)
@@ -164,6 +199,12 @@ def check_forex_factory_news():
 
         events = response.json()
         now_ksa = datetime.utcnow() + timedelta(hours=3)
+        today_str = now_ksa.strftime('%Y-%m-%d')
+
+        # إرسال الملخص اليومي تلقائياً الساعة 1:00 فجراً بتوقيت السعودية (مع بداية اليوم الجديد)
+        if now_ksa.hour == 1 and now_ksa.minute == 0 and last_daily_summary_date != today_str:
+            send_daily_economic_briefing(events, now_ksa)
+            last_daily_summary_date = today_str
 
         for event in events:
             currency = event.get("currency")
@@ -223,12 +264,25 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with optimized News window!", 200
+    return "Bot is running with 1 AM Daily Briefing!", 200
 
 @app.route('/test-news')
 def test_news():
     check_forex_factory_news()
     return "News check executed successfully!", 200
+
+@app.route('/test-briefing')
+def test_briefing():
+    try:
+        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+        response = requests.get(url)
+        if response.status_code == 200:
+            now_ksa = datetime.utcnow() + timedelta(hours=3)
+            send_daily_economic_briefing(response.json(), now_ksa)
+            return "Daily briefing test executed and sent to Telegram successfully!", 200
+    except Exception as e:
+        return f"Error: {str(e)}", 500
+    return "Failed to fetch briefing", 500
 
 @app.route('/test-webhook')
 def test_webhook():
