@@ -58,7 +58,7 @@ def send_to_telegram(message, reply_to_message_id=None):
         payload["reply_to_message_id"] = reply_to_message_id
 
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         res_data = response.json()
         if res_data.get("ok"):
             return res_data.get("result", {}).get("message_id")
@@ -118,7 +118,7 @@ def webhook():
 
     if signal_type == "VIP":
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -131,7 +131,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -142,7 +142,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "MEDIUM":
         message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️▪️▪️▪️▪️️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -172,7 +172,7 @@ def webhook():
 💡 فرصة مضاربة سريعة مستقلة ⏳"""
     else:
         message = f"""📈 *إشارة تداول عامة* 📈
-▪️▪️▪️▪️▪️▪️▪️▪️️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -182,7 +182,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (منسقة ومرتبة)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -201,17 +201,18 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
+        # إرسال تنبيه في حال لم تكن هناك أحداث اليوم لنتأكد أن القناة تستقبل
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️️▪️▪️▪️\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n"
     for time_ksa, event in today_events:
         title = translate_news(event.get("title"))
         currency = event.get("currency", "USD")
         impact = event.get("impact")
         impact_str = "عالي 🔴" if impact == "High" else "متوسط 🟠"
-        # تنسيق السطر بشكل مرتب: الوقت | العملة - الحدث (الأثر) بتوقيت السعودية
         message += f"⏰ `{time_ksa.strftime('%I:%M %p')}` | {currency} - {title} ({impact_str})\n"
 
     message += "\n🕒 *جميع الأوقات بتوقيت السعودية*"
@@ -222,15 +223,16 @@ def check_forex_factory_news():
     global last_daily_summary_date
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
+            print(f"Failed to fetch calendar, status code: {response.status_code}")
             return
 
         events = response.json()
         now_ksa = datetime.utcnow() + timedelta(hours=3)
         today_str = now_ksa.strftime('%Y-%m-%d')
 
-        # إرسال الملخص اليومي تلقائياً خلال الفترة من 1 فجراً إلى 3 فجراً (تصفير التاريخ لتتم إعادة الإرسال عند طلب التجربة)
         if 1 <= now_ksa.hour < 3 and last_daily_summary_date != today_str:
             send_daily_economic_briefing(events, now_ksa)
             last_daily_summary_date = today_str
@@ -252,11 +254,10 @@ def check_forex_factory_news():
                     time_difference = (event_time_ksa - now_ksa).total_seconds() / 60
                     event_id = f"{raw_title}_{date_str}"
 
-                    # أ) إرسال تنبيه قبل الخبر بالعربي (بين 10 إلى 20 دقيقة)
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة / الأثر: {currency} {impact_emoji} ({impact})
 ⏰ الوقت: {event_time_ksa.strftime('%I:%M %p')} (بتوقيت السعودية)"""
@@ -268,7 +269,6 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # ب) إرسال النتيجة بالعربي
                     elif -5 <= time_difference <= 60 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
@@ -294,23 +294,24 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with enhanced translations and formatting!", 200
+    return "Bot is running perfectly with headers fix!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
     try:
         url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=15)
         if response.status_code == 200:
             now_ksa = datetime.utcnow() + timedelta(hours=3)
-            # لتجربة فورية: نفرغ التاريخ المؤقت ونرسل الملخص مباشرة
             global last_daily_summary_date
             last_daily_summary_date = "" 
             send_daily_economic_briefing(response.json(), now_ksa)
             return "Test briefing executed successfully and sent to Telegram!", 200
+        else:
+            return f"Failed to fetch from external source, status code: {response.status_code}", 500
     except Exception as e:
         return f"Error: {str(e)}", 500
-    return "Failed to fetch briefing", 500
 
 @app.route('/test-webhook')
 def test_webhook():
