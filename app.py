@@ -50,10 +50,10 @@ NEWS_TRANSLATIONS = {
     "Retail Sales YoY": "مبيعات التجزئة (سنوي)"
 }
 
-# 💱 دالة تعريب رموز العملات بدقة لمنع أي خطأ أو خلط
+# 💱 دالة تعريب رموز العملات المرنة والصحيحة
 def format_currency(curr):
     if not curr:
-        return None
+        return "الدولار الأمريكي 🇺🇸" # قيمة افتراضية آمنة إذا لم تُذكر العملة صراحة لمنع الفراغ
     curr_upper = str(curr).strip().upper()
     currencies_map = {
         "USD": "الدولار الأمريكي 🇺🇸",
@@ -66,7 +66,7 @@ def format_currency(curr):
         "JPY": "الين الياباني 🇯🇵",
         "CNY": "اليوان الصيني 🇨🇳"
     }
-    return currencies_map.get(curr_upper, None) # إذا لم تكن العملة معروفة بدقة، يتم رفضها
+    return currencies_map.get(curr_upper, f"{curr_upper} 🌐")
 
 def format_arabic_time(dt):
     """⏰ تحويل الوقت إلى الصيغة العربية الصريحة (صباحاً / مساءً)"""
@@ -74,10 +74,9 @@ def format_arabic_time(dt):
     minute = dt.minute
     period = "الصباح" if hour < 12 else "المساء"
     
-    # تحويل نظام 24 ساعة إلى 12 ساعة
     h12 = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
     time_str = f"{h12:02d}:{minute:02d}"
-    return f"{time_str} في {period}"
+    return f"{time_str} في وقت {period}"
 
 def translate_news(title):
     return NEWS_TRANSLATIONS.get(title, title)
@@ -124,7 +123,7 @@ def calculate_risk_reward(action, entry, sl, tp):
         pass
     return "غير محدد"
 
-# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook)
+# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook) - هنا يتم استقبال صفقات الـ VIP والفرص
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     data = request.get_json(force=True, silent=True)
@@ -167,7 +166,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "HIGH":
         message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -189,7 +188,7 @@ def webhook():
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
     elif signal_type == "REVERSAL":
         message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -218,7 +217,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (دقيقة ومفلترة بالكامل)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -229,8 +228,7 @@ def send_daily_economic_briefing(events, now_ksa):
         raw_currency = event.get("currency")
         formatted_curr = format_currency(raw_currency)
         
-        # شرط أساسي: التأثير عالي أو متوسط، والعملة معروفة ومعتمدة بدقة، ولليوم الحالي
-        if impact in ["High", "Medium"] and date_str and formatted_curr:
+        if impact in ["High", "Medium"] and date_str:
             try:
                 event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
@@ -241,12 +239,12 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️️▪️▪️▪️▪️▪️▪️\n\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️️▪️▪️▪️▪️\n\n"
     for time_ksa, event, formatted_curr in today_events:
         title = translate_news(event.get("title"))
         impact = event.get("impact")
@@ -257,7 +255,7 @@ def send_daily_economic_briefing(events, now_ksa):
     message += "🕒 *جميع الأوقات بتوقيت المملكة العربية السعودية*"
     send_to_telegram(message)
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها الحية
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
 def check_forex_factory_news():
     global last_daily_summary_date
     try:
@@ -286,7 +284,7 @@ def check_forex_factory_news():
             forecast = event.get("forecast")
             previous = event.get("previous")
 
-            if impact in ["High", "Medium"] and formatted_curr:
+            if impact in ["High", "Medium"]:
                 try:
                     event_time_utc = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                     event_time_ksa = event_time_utc.astimezone().replace(tzinfo=None) + timedelta(hours=3)
@@ -297,7 +295,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️️▪️▪️
 📊 الحدث: {title}
 💱 العملة: {formatted_curr}
 ⚠️ الأثر: {impact_emoji} ({impact})
@@ -314,7 +312,7 @@ def check_forex_factory_news():
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️▪️▪️▪️▪️▪️▪️▪️️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📌 الحدث: {title}
 💱 العملة: {formatted_curr}
 📈 الفعلي (Actual): {actual}
@@ -336,7 +334,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with strictly validated currencies and Arabic time format!", 200
+    return "Bot is fully operational with robust currency and time formatting!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -349,7 +347,7 @@ def test_briefing():
             global last_daily_summary_date
             last_daily_summary_date = "" 
             send_daily_economic_briefing(response.json(), now_ksa)
-            return "Test briefing executed successfully with strict currency filtering and Arabic time!", 200
+            return "Test briefing executed successfully!", 200
         else:
             return f"Failed to fetch from external source, status code: {response.status_code}", 500
     except Exception as e:
