@@ -4,6 +4,7 @@ from flask import Flask, request
 import requests
 import json
 import os
+import re
 
 app = Flask(__name__)
 
@@ -50,7 +51,6 @@ NEWS_TRANSLATIONS = {
     "Retail Sales YoY": "مبيعات التجزئة (سنوي)"
 }
 
-# 💱 دالة تعريب رموز العملات المرنة والصحيحة
 def format_currency(curr):
     if not curr:
         return "الدولار الأمريكي 🇺🇸"
@@ -69,20 +69,16 @@ def format_currency(curr):
     return currencies_map.get(curr_upper, f"{curr_upper} 🌐")
 
 def format_arabic_time(dt):
-    """⏰ تحويل الوقت إلى الصيغة العربية الصريحة (صباحاً / مساءً)"""
     hour = dt.hour
     minute = dt.minute
     period = "الصباح" if hour < 12 else "المساء"
-    
     h12 = hour if 1 <= hour <= 12 else (hour - 12 if hour > 12 else 12)
-    time_str = f"{h12:02d}:{minute:02d}"
-    return f"{time_str} في وقت {period}"
+    return f"{h12:02d}:{minute:02d} في وقت {period}"
 
 def translate_news(title):
     return NEWS_TRANSLATIONS.get(title, title)
 
 def send_to_telegram(message, reply_to_message_id=None):
-    """🤖 دالة إرسال الرسائل إلى قناة تيليجرام مع دعم الرد المباشر"""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHANNEL_ID,
@@ -102,125 +98,62 @@ def send_to_telegram(message, reply_to_message_id=None):
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
 
-def calculate_risk_reward(action, entry, sl, tp):
-    """📊 حساب نسبة المخاطرة للعائد تلقائياً"""
-    try:
-        entry_f = float(entry)
-        sl_f = float(sl)
-        tp_f = float(tp)
-        
-        if action.lower() in ["شراء", "buy"]:
-            risk = abs(entry_f - sl_f)
-            reward = abs(tp_f - entry_f)
-        else:
-            risk = abs(sl_f - entry_f)
-            reward = abs(entry_f - tp_f)
-            
-        if risk > 0:
-            ratio = round(reward / risk, 1)
-            return f"1:{ratio}"
-    except Exception:
-        pass
-    return "غير محدد"
-
-# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (محدث ليدعم كافة صيغ المنصة بلا استثناء)
+# 1️⃣ استقبال ومعالجة رسائل تريدينج فيو بطريقة استخراج النصوص والأرقام الذكية
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
-    data = None
-    # محاولة قراءة البيانات بكل الطرق الممكنة (JSON, Form, Text)
+    raw_data = ""
     if request.is_json:
         data = request.get_json(silent=True)
-    if not data and request.form:
-        data = request.form.to_dict()
-    if not data:
-        try:
-            raw_data = request.data.decode('utf-8')
-            if raw_data.startswith("{") or raw_data.startswith("["):
-                data = json.loads(raw_data)
-            else:
-                # إذا كانت البيانات المرسلة نصية مباشرة من تريدينج فيو
-                data = {"action": raw_data, "type": "ALERT"}
-        except Exception:
-            data = {}
+        if isinstance(data, dict):
+            raw_data = data.get("message", data.get("text", json.dumps(data)))
+        else:
+            raw_data = str(data)
+    elif request.form:
+        raw_data = request.form.get("message", request.form.get("text", str(request.form.to_dict())))
+    else:
+        raw_data = request.data.decode('utf-8', errors='ignore')
 
-    if not data:
-        # إذا لم يتم استخلاص شيء، نلتقط النص الخام كإشعار عام
-        raw_text = request.data.decode('utf-8') if request.data else "تنبيه عام من المنصة"
-        send_to_telegram(f"🚨 *إشعار من المؤشر*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n{raw_text}")
-        return "OK", 200
+    if not raw_data:
+        raw_data = "تنبيه عام من المؤشر"
 
-    signal_type = str(data.get("type", data.get("signal", "VIP"))).upper()
-    ticker = data.get("ticker", "XAUUSD")
-    interval = data.get("interval", "15m")
-    action = data.get("action", data.get("message", "تنبيه جديد"))
-    close_price = data.get("close", data.get("price", "0.0"))
-    sl = data.get("sl", "0.0")
-    tp1 = data.get("tp1", "0.0")
-    tp2 = data.get("tp2", "يُحدد هنا")
-    tp3 = data.get("tp3", "يُحدد هنا")
+    # استخراج البيانات بذكاء من النص القادم
+    ticker = "XAUUSD"
+    if "EURUSD" in raw_data.upper(): ticker = "EURUSD"
+    elif "GBPUSD" in raw_data.upper(): ticker = "GBPUSD"
+    elif "BTCUSD" in raw_data.upper(): ticker = "BTCUSD"
+    elif "XAUUSD" in raw_data.upper(): ticker = "XAUUSD"
 
-    rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
-
-    if "REVERSAL" in signal_type or "انعكاس" in signal_type or "بيعي" in signal_type or "انعكاس" in str(action):
+    # تحديد نوع الرسالة بناءً على محتوى النص الوارد من المنصة
+    upper_raw = raw_data.upper()
+    
+    if "انعكاس" in raw_raw or "REVERSAL" in upper_raw or "بيعي" in raw_raw:
         message = f"""🛑⚠️ *تنبيه انعكاس / سيناريو بيعي* ⚠️🛑
-▪️▪️▪️▪️▪️▪️️▪️▪️▪
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-📉 الحالة: {action}
-💰 السعر / الإغلاق: {close_price}
-💡 انتظر تأكيد الدخول الجديد ⏳"""
-    elif "MEDIUM" in signal_type or "متوسطة" in signal_type or "متوسطة" in str(action):
-        message = f"""🔹📊 *فرصة متوسطة التوافق* 📊🔹
-▪️▪️▪️▪️️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الاتجاه: {action}
-💰 الدخول: {close_price}
-🛑 وقف الخسارة: {sl}
-🎯 الهدف الأول: {tp1}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif "EXIT" in signal_type or "خروج" in signal_type or "خروج" in str(action):
-        message = f"""⚠️🚨 *خروج مبكر من الصفقة* 🚨⚠️
-▪️▪️▪️▪️▪️▪️▪️▪️️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-📌 التفاصيل: {action}
-💰 السعر الحالي: {close_price}
-💡 تم رصد انعكاس سلبي قبل الأهداف ⏳"""
-    elif "VIP" in signal_type:
-        message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الاتجاه: {action}
-💰 الدخول: {close_price}
-🛑 وقف الخسارة: {sl}
-🎯 الهدف الأول: {tp1}
-🎯 الهدف الثاني: {tp2}
-🎯 الهدف الثالث: {tp3}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif "HIGH" in signal_type or "عالية" in str(action):
-        message = f"""⭐⚡ *فرصة عالية التوافق* ⚡⭐
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الاتجاه: {action}
-💰 الدخول: {close_price}
-🛑 وقف الخسارة: {sl}
-🎯 الهدف الأول: {tp1}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    else:
-        message = f"""📈 *تنبيه من المؤشر (EA ALPHA VIP)* 📈
-▪️▪️️▪️▪️▪️▪️▪️▪️▪️
+⏳ الفريم: 15m
+📉 التفاصيل: {raw_data}
+💡 انتظر تأكيد الدخول الجديد ⏳"""
+    elif "متوسطة" in raw_raw or "MEDIUM" in upper_raw or "متوسطة التوافق" in raw_raw:
+        message = f"""🔹📊 *فرصة متوسطة التوافق* 📊🔹
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
+📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-📌 التفاصيل: {action}
-💰 السعر: {close_price}"""
+⏳ الفريم: 15m
+📌 التفاصيل: {raw_data}"""
+    elif "خروج" in raw_raw or "EXIT" in upper_raw:
+        message = f"""⚠️🚨 *خروج مبكر من الصفقة* 🚨⚠️
+▪️▪️▪️️▪️▪️▪️▪️▪️▪️
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: 15m
+📌 التفاصيل: {raw_data}
+💡 تم رصد انعكاس سلبي قبل الأهداف ⏳"""
+    else:
+        message = f"""🚨 *تنبيه من المؤشر (EA ALPHA VIP)* 🚨
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
+💱 الزوج: {ticker}
+📌 التفاصيل: {raw_data}"""
 
     send_to_telegram(message)
     return "OK", 200
@@ -247,7 +180,7 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
@@ -263,7 +196,7 @@ def send_daily_economic_briefing(events, now_ksa):
     message += "🕒 *جميع الأوقات بتوقيت المملكة العربية السعودية*"
     send_to_telegram(message)
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (محدث بنافذة زمنية أوسع للنتائج)
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها بدقة تامة
 def check_forex_factory_news():
     global last_daily_summary_date
     try:
@@ -300,7 +233,7 @@ def check_forex_factory_news():
                     event_id = f"{raw_title}_{date_str}"
                     time_arabic = format_arabic_time(event_time_ksa)
 
-                    # إرسال التنبيه القبلي قبل الموعد بـ 10 إلى 20 دقيقة
+                    # إرسال التنبيه القبلي
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -317,12 +250,12 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # إرسال نتيجة الخبر (تتم متابعته من وقت الحدث وحتى 120 دقيقة بعده لضمان صدور الرقم الفعلي)
-                    elif -10 <= time_difference <= 120 and event_id in sent_alerts:
+                    # إرسال نتيجة الخبر بمجرد صدورها (متابعة لمدة 3 ساعات بعد الحدث لضمان التقاط التحديث)
+                    elif -10 <= time_difference <= 180 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📌 الحدث: {title}
 💱 العملة: {formatted_curr}
 📈 الفعلي (Actual): {actual}
@@ -344,7 +277,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is fully operational with universal webhook support and extended news results!", 200
+    return "Bot is fully operational with raw alert text parser and extended news listener!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -365,19 +298,7 @@ def test_briefing():
 
 @app.route('/test-webhook')
 def test_webhook():
-    rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
-    message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: XAUUSD
-⏳ الفريم: 15m
-🎯 الاتجاه: شراء
-💰 الدخول: 2350.00
-🛑 وقف الخسارة: 2340.00
-🎯 الهدف الأول: 2360.00
-🎯 الهدف الثاني: 2370.00
-🎯 الهدف الثالث: 2380.00
-⚖️ نسبة المخاطرة للعائد: {rr}"""
+    message = "🚨 صفقة تجريبية ناجحة: XAUUSD شراء من السعر 2350.00"
     result = send_to_telegram(message)
     return f"Test Webhook Sent. Response: {result}", 200
 
