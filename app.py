@@ -53,7 +53,7 @@ NEWS_TRANSLATIONS = {
 # 💱 دالة تعريب رموز العملات المرنة والصحيحة
 def format_currency(curr):
     if not curr:
-        return "الدولار الأمريكي 🇺🇸" # قيمة افتراضية آمنة إذا لم تُذكر العملة صراحة لمنع الفراغ
+        return "الدولار الأمريكي 🇺🇸"
     curr_upper = str(curr).strip().upper()
     currencies_map = {
         "USD": "الدولار الأمريكي 🇺🇸",
@@ -123,7 +123,7 @@ def calculate_risk_reward(action, entry, sl, tp):
         pass
     return "غير محدد"
 
-# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook) - هنا يتم استقبال صفقات الـ VIP والفرص
+# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook) - محدث وشامل لكل السيناريوهات
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     data = request.get_json(force=True, silent=True)
@@ -139,7 +139,7 @@ def webhook():
     if not data:
         return "Invalid Data", 400
 
-    signal_type = data.get("type", "VIP").upper()
+    signal_type = str(data.get("type", "VIP")).upper()
     ticker = data.get("ticker", "XAUUSD")
     interval = data.get("interval", "15m")
     action = data.get("action", "شراء")
@@ -151,7 +151,37 @@ def webhook():
 
     rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
-    if signal_type == "VIP":
+    # معالجة شاملة لكافة أنواع السيناريوهات والتنبيهات الواردة من المنصة
+    if "REVERSAL" in signal_type or "انعكاس" in signal_type or "بيعي" in signal_type:
+        message = f"""🛑⚠️ *تنبيه انعكاس / سيناريو بيعي* ⚠️🛑
+▪️▪️▪️▪️▪️▪️▪️▪️▪️️
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: {interval}
+📉 الحالة: {action}
+💰 السعر / الإغلاق: {close_price}
+💡 انتظر تأكيد الدخول الجديد ⏳"""
+    elif "MEDIUM" in signal_type or "متوسطة" in signal_type:
+        message = f"""🔹📊 *فرصة متوسطة التوافق* 📊🔹
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: {interval}
+🎯 الاتجاه: {action}
+💰 الدخول: {close_price}
+🛑 وقف الخسارة: {sl}
+🎯 الهدف الأول: {tp1}
+⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
+    elif "EXIT" in signal_type or "خروج" in signal_type:
+        message = f"""⚠️🚨 *خروج مبكر من الصفقة* 🚨⚠️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
+📊 المؤشر: EA ALPHA VIP
+💱 الزوج: {ticker}
+⏳ الفريم: {interval}
+📌 التفاصيل: {action}
+💰 السعر الحالي: {close_price}
+💡 تم رصد انعكاس سلبي قبل الأهداف ⏳"""
+    elif "VIP" in signal_type:
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
@@ -164,9 +194,9 @@ def webhook():
 🎯 الهدف الثاني: {tp2}
 🎯 الهدف الثالث: {tp3}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif signal_type == "HIGH":
-        message = f"""⭐⚡ *فرصة عالية* ⚡⭐
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+    elif "HIGH" in signal_type:
+        message = f"""⭐⚡ *فرصة عالية التوافق* ⚡⭐
+▪️️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -175,27 +205,7 @@ def webhook():
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif signal_type == "MEDIUM":
-        message = f"""🔹📊 *فرصة متوسطة* 📊🔹
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الاتجاه: {action}
-💰 الدخول: {close_price}
-🛑 وقف الخسارة: {sl}
-🎯 الهدف الأول: {tp1}
-⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif signal_type == "REVERSAL":
-        message = f"""🛑⚠️ *تنبيه انعكاس / خروج مبكر* ⚠️🛑
-▪️▪️▪️️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-📉 الحالة: {action}
-💰 سعر الإغلاق: {close_price}
-💡 انتظر دخول جديد ⏳"""
-    elif signal_type == "REINFORCEMENT":
+    elif "REINFORCEMENT" in signal_type:
         message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
@@ -203,15 +213,14 @@ def webhook():
 ⏳ الفريم: {interval}
 🎯 الحالة: {action}
 💰 نطاق السعر: {close_price}
-🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯
-💡 فرصة مضاربة سريعة مستقلة ⏳"""
+🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯"""
     else:
         message = f"""📈 *إشارة تداول عامة* 📈
 ▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
-🎯 الاتجاه: {action}
+🎯 الحالة / الاتجاه: {action}
 💰 السعر: {close_price}"""
 
     send_to_telegram(message)
@@ -239,12 +248,12 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️️▪️▪️▪️▪️\n\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\n"
     for time_ksa, event, formatted_curr in today_events:
         title = translate_news(event.get("title"))
         impact = event.get("impact")
@@ -295,7 +304,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️▪️▪️▪️▪️▪️️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة: {formatted_curr}
 ⚠️ الأثر: {impact_emoji} ({impact})
@@ -312,7 +321,7 @@ def check_forex_factory_news():
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
-▪️▪️▪️▪️▪️️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📌 الحدث: {title}
 💱 العملة: {formatted_curr}
 📈 الفعلي (Actual): {actual}
@@ -334,7 +343,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is fully operational with robust currency and time formatting!", 200
+    return "Bot is fully updated with all TradingView signals and Arabic time!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -357,7 +366,7 @@ def test_briefing():
 def test_webhook():
     rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
     message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
