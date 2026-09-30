@@ -43,25 +43,19 @@ NEWS_TRANSLATIONS = {
     "Core PCE Price Index m/m": "مؤشر أسعار نفقات الاستهلاك الشخصي الأساسي (شهري)",
     "Final GDP q/q": "الناتج المحلي الإجمالي النهائي (ربعي)",
     "Import Prices m/m": "أسعار الاستيراد (شهري)",
-    "Industrial Production m/m": "الإنتاج الصناعي (شهري)"
+    "Industrial Production m/m": "الإنتاج الصناعي (شهري)",
+    "Unemployment Claims": "طلبات إعانة البطالة",
+    "FOMC Member Kashkari Speaks": "خطاب عضوة الفيدرالي كاشكاري",
+    "FOMC Member Waller Speaks": "خطاب عضو الفيدرالي والر جولر",
+    "SNB Chairman Schlegel Speaks": "خطاب رئيس البنك السويسري شليجل",
+    "BOE Gov Bailey Speaks": "خطاب محافظ البنك المركزي البريطاني بيلي"
 }
 
+# 💱 دالة استخراج عملة الخبر الحقيقية بدقة من المصدر دون تعميم
 def format_currency(curr):
     if not curr:
         return "USD"
-    curr_upper = str(curr).strip().upper()
-    currencies_map = {
-        "USD": "USD (الدولار الأمريكي)",
-        "EUR": "EUR (اليورو الأوروبي)",
-        "GBP": "GBP (الجنيه الاسترليني)",
-        "AUD": "AUD (الدولار الاسترالي)",
-        "NZD": "NZD (الدولار النيوزيلندي)",
-        "CAD": "CAD (الدولار الكندي)",
-        "CHF": "CHF (الفرنك السويسري)",
-        "JPY": "JPY (الين الياباني)",
-        "CNY": "CNY (اليوان الصيني)"
-    }
-    return currencies_map.get(curr_upper, curr_upper)
+    return str(curr).strip().upper()
 
 # 🕒 الدالة الموحدة والمختصرة للوقت (ص / م) بتوقيت السعودية
 def format_arabic_time(dt):
@@ -152,7 +146,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية مع ربط العملة بدقة لكل حدث
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية مع الرمز الصحيح لكل عملة
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -174,12 +168,12 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
 
-    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️\n\n"
+    message = "📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\n"
     for time_ksa, event, formatted_curr in today_events:
         title = translate_news(event.get("title"))
         impact = event.get("impact")
@@ -264,7 +258,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️️▪️▪️
 📊 الحدث: {title}
 💱 العملة: `{formatted_curr}`
 ⚠ الأثر: {impact_emoji} ({impact})
@@ -277,14 +271,14 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # 2️⃣ متابعة النتيجة بذكاء فائق (فحص كل 15 ثانية ضمن نافذة 0 إلى 3 دقائق بعد الصدور)
+                    # 2️⃣ متابعة النتيجة لحظياً كل 15 ثانية ضمن النافذة (من -3 إلى 0 دقائق)
                     elif -3 <= time_difference <= 0 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             direction, note = analyze_news_impact(raw_title, actual, forecast)
                             
                             result_message = f"""📊 *صدر الآن :*
-▪️▪️▪️▪️️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📌 العملة / الأصل: *{formatted_curr}*
 📌 الحدث: {title}
 
@@ -305,14 +299,14 @@ def check_forex_factory_news():
     except Exception as e:
         print("خطأ في فحص ومتابعة الأخبار الاقتصادية:", e)
 
-# ⚡ تشغيل الجدولة بفحص متسارع كل 15 ثانية لضمان اصطياد النتيجة في نفس ثواني صدورها الأولى
+# ⚡ تشغيل الجدولة بفحص متسارع كل 15 ثانية
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=check_forex_factory_news, trigger="interval", seconds=15)
 scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with ultra-fast 15-second polling for news results!", 200
+    return "Bot is running with correct per-event currency mapping!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
