@@ -123,27 +123,37 @@ def calculate_risk_reward(action, entry, sl, tp):
         pass
     return "غير محدد"
 
-# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (Webhook) - محدث وشامل لكل السيناريوهات
+# 1️⃣ استقبال وتصنيف إشارات تريدينج فيو (محدث ليدعم كافة صيغ المنصة بلا استثناء)
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
-    data = request.get_json(force=True, silent=True)
+    data = None
+    # محاولة قراءة البيانات بكل الطرق الممكنة (JSON, Form, Text)
+    if request.is_json:
+        data = request.get_json(silent=True)
+    if not data and request.form:
+        data = request.form.to_dict()
     if not data:
-        if request.form:
-            data = request.form.to_dict()
-        else:
-            try:
-                data = json.loads(request.data.decode('utf-8'))
-            except Exception:
-                data = {}
+        try:
+            raw_data = request.data.decode('utf-8')
+            if raw_data.startswith("{") or raw_data.startswith("["):
+                data = json.loads(raw_data)
+            else:
+                # إذا كانت البيانات المرسلة نصية مباشرة من تريدينج فيو
+                data = {"action": raw_data, "type": "ALERT"}
+        except Exception:
+            data = {}
 
     if not data:
-        return "Invalid Data", 400
+        # إذا لم يتم استخلاص شيء، نلتقط النص الخام كإشعار عام
+        raw_text = request.data.decode('utf-8') if request.data else "تنبيه عام من المنصة"
+        send_to_telegram(f"🚨 *إشعار من المؤشر*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n{raw_text}")
+        return "OK", 200
 
-    signal_type = str(data.get("type", "VIP")).upper()
+    signal_type = str(data.get("type", data.get("signal", "VIP"))).upper()
     ticker = data.get("ticker", "XAUUSD")
     interval = data.get("interval", "15m")
-    action = data.get("action", "شراء")
-    close_price = data.get("close", "0.0")
+    action = data.get("action", data.get("message", "تنبيه جديد"))
+    close_price = data.get("close", data.get("price", "0.0"))
     sl = data.get("sl", "0.0")
     tp1 = data.get("tp1", "0.0")
     tp2 = data.get("tp2", "يُحدد هنا")
@@ -151,19 +161,18 @@ def webhook():
 
     rr_ratio = calculate_risk_reward(action, close_price, sl, tp1)
 
-    # معالجة شاملة لكافة أنواع السيناريوهات والتنبيهات الواردة من المنصة
-    if "REVERSAL" in signal_type or "انعكاس" in signal_type or "بيعي" in signal_type:
+    if "REVERSAL" in signal_type or "انعكاس" in signal_type or "بيعي" in signal_type or "انعكاس" in str(action):
         message = f"""🛑⚠️ *تنبيه انعكاس / سيناريو بيعي* ⚠️🛑
-▪️▪️▪️▪️▪️▪️▪️▪️▪️️
+▪️▪️▪️▪️▪️▪️️▪️▪️▪
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
 📉 الحالة: {action}
 💰 السعر / الإغلاق: {close_price}
 💡 انتظر تأكيد الدخول الجديد ⏳"""
-    elif "MEDIUM" in signal_type or "متوسطة" in signal_type:
+    elif "MEDIUM" in signal_type or "متوسطة" in signal_type or "متوسطة" in str(action):
         message = f"""🔹📊 *فرصة متوسطة التوافق* 📊🔹
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -172,9 +181,9 @@ def webhook():
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif "EXIT" in signal_type or "خروج" in signal_type:
+    elif "EXIT" in signal_type or "خروج" in signal_type or "خروج" in str(action):
         message = f"""⚠️🚨 *خروج مبكر من الصفقة* 🚨⚠️
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -183,7 +192,7 @@ def webhook():
 💡 تم رصد انعكاس سلبي قبل الأهداف ⏳"""
     elif "VIP" in signal_type:
         message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -194,9 +203,9 @@ def webhook():
 🎯 الهدف الثاني: {tp2}
 🎯 الهدف الثالث: {tp3}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif "HIGH" in signal_type:
+    elif "HIGH" in signal_type or "عالية" in str(action):
         message = f"""⭐⚡ *فرصة عالية التوافق* ⚡⭐
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
@@ -205,22 +214,12 @@ def webhook():
 🛑 وقف الخسارة: {sl}
 🎯 الهدف الأول: {tp1}
 ⚖️ نسبة المخاطرة للعائد: {rr_ratio}"""
-    elif "REINFORCEMENT" in signal_type:
-        message = f"""📦⚡ *منطقة تجميع وسيولة نشطة* ⚡📦
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
-💱 الزوج: {ticker}
-⏳ الفريم: {interval}
-🎯 الحالة: {action}
-💰 نطاق السعر: {close_price}
-🎯 الهدف المقترح: +30 إلى +60 نقطة 🎯"""
     else:
-        message = f"""📈 *إشارة تداول عامة* 📈
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
-📊 المؤشر: EA ALPHA VIP
+        message = f"""📈 *تنبيه من المؤشر (EA ALPHA VIP)* 📈
+▪️▪️️▪️▪️▪️▪️▪️▪️▪️
 💱 الزوج: {ticker}
 ⏳ الفريم: {interval}
-🎯 الحالة / الاتجاه: {action}
+📌 التفاصيل: {action}
 💰 السعر: {close_price}"""
 
     send_to_telegram(message)
@@ -264,7 +263,7 @@ def send_daily_economic_briefing(events, now_ksa):
     message += "🕒 *جميع الأوقات بتوقيت المملكة العربية السعودية*"
     send_to_telegram(message)
 
-# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها
+# 2️⃣ تصفية ومتابعة الأخبار الاقتصادية ونتائجها (محدث بنافذة زمنية أوسع للنتائج)
 def check_forex_factory_news():
     global last_daily_summary_date
     try:
@@ -301,6 +300,7 @@ def check_forex_factory_news():
                     event_id = f"{raw_title}_{date_str}"
                     time_arabic = format_arabic_time(event_time_ksa)
 
+                    # إرسال التنبيه القبلي قبل الموعد بـ 10 إلى 20 دقيقة
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
@@ -317,7 +317,8 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    elif -5 <= time_difference <= 60 and event_id in sent_alerts:
+                    # إرسال نتيجة الخبر (تتم متابعته من وقت الحدث وحتى 120 دقيقة بعده لضمان صدور الرقم الفعلي)
+                    elif -10 <= time_difference <= 120 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             result_message = f"""📊 *نتيجة الخبر الاقتصادي*
@@ -343,7 +344,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is fully updated with all TradingView signals and Arabic time!", 200
+    return "Bot is fully operational with universal webhook support and extended news results!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
@@ -366,7 +367,7 @@ def test_briefing():
 def test_webhook():
     rr = calculate_risk_reward("شراء", "2350.00", "2340.00", "2360.00")
     message = f"""🚨🔥 *صفقة VIP رئيسية* 🔥🚨
-▪️▪️▪️▪️▪️▪️️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 المؤشر: EA ALPHA VIP
 💱 الزوج: XAUUSD
 ⏳ الفريم: 15m
