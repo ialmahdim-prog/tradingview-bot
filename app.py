@@ -51,7 +51,7 @@ NEWS_TRANSLATIONS = {
     "BOE Gov Bailey Speaks": "خطاب محافظ البنك المركزي البريطاني بيلي"
 }
 
-# 💱 دالة استخراج عملة الخبر الحقيقية بدقة من المصدر دون تعميم
+# 💱 دالة تنسيق العملة
 def format_currency(curr):
     if not curr:
         return "USD"
@@ -88,7 +88,7 @@ def send_to_telegram(message, reply_to_message_id=None):
         print("خطأ في إرسال الرسالة إلى تيليجرام:", e)
         return None
 
-# 1️⃣ استقبال ومعالجة رسائل تريدينج فيو (بالتنسيق المختصر بدون اسم المؤشر المتكرر)
+# 1️⃣ استقبال ومعالجة رسائل تريدينج فيو
 @app.route("/webhook", endpoint="webhook_receiver", methods=["POST"])
 def webhook():
     raw_data = ""
@@ -138,7 +138,6 @@ def webhook():
     else:
         status_text = "🚨 تنبيه فني جديد"
 
-    # ⚡ قالب الرسالة المدمج والمختصر (بدون تكرار اسم المؤشر)
     message = f"""⚡ *{ticker}* | ⏳ `{timeframe}`
 📌 *الحالة:* {status_text}
 💬 *التفاصيل:* {raw_data}"""
@@ -146,7 +145,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية مع الرمز الصحيح لكل عملة
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (مع جلب العملة الصحيحة عبر country أو currency)
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -154,7 +153,8 @@ def send_daily_economic_briefing(events, now_ksa):
     for event in events:
         date_str = event.get("date")
         impact = event.get("impact")
-        raw_currency = event.get("currency")
+        # تصحيح مفتاح جلب العملة ليتوافق مع هيكل بيانات فوركس فاكتوري
+        raw_currency = event.get("country") or event.get("currency")
         formatted_curr = format_currency(raw_currency)
         
         if impact in ["High", "Medium"] and date_str:
@@ -168,7 +168,7 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
@@ -236,7 +236,8 @@ def check_forex_factory_news():
             last_daily_summary_date = today_str
 
         for event in events:
-            raw_currency = event.get("currency")
+            # تصحيح مفتاح جلب العملة هنا أيضاً
+            raw_currency = event.get("country") or event.get("currency")
             formatted_curr = format_currency(raw_currency)
             impact = event.get("impact")
             raw_title = event.get("title")
@@ -258,7 +259,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️▪️▪️▪️▪️▪️️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة: `{formatted_curr}`
 ⚠ الأثر: {impact_emoji} ({impact})
@@ -278,7 +279,7 @@ def check_forex_factory_news():
                             direction, note = analyze_news_impact(raw_title, actual, forecast)
                             
                             result_message = f"""📊 *صدر الآن :*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️️▪️▪️▪️▪️▪️▪️▪️▪️
 📌 العملة / الأصل: *{formatted_curr}*
 📌 الحدث: {title}
 
@@ -306,7 +307,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with correct per-event currency mapping!", 200
+    return "Bot is running with correct country/currency mapping!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
