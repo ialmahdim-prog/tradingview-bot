@@ -8,7 +8,7 @@ import re
 
 app = Flask(__name__)
 
-# ⚙️ إعدادات بوت تيليجرام
+# ⚙️️ إعدادات بوت تيليجرام
 TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
@@ -145,7 +145,7 @@ def webhook():
     send_to_telegram(message)
     return "OK", 200
 
-# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية (مع جلب العملة الصحيحة عبر country أو currency)
+# 📅 دالة إرسال ملخص أبرز أخبار اليوم الاقتصادية
 def send_daily_economic_briefing(events, now_ksa):
     today_str = now_ksa.strftime('%Y-%m-%d')
     today_events = []
@@ -153,7 +153,6 @@ def send_daily_economic_briefing(events, now_ksa):
     for event in events:
         date_str = event.get("date")
         impact = event.get("impact")
-        # تصحيح مفتاح جلب العملة ليتوافق مع هيكل بيانات فوركس فاكتوري
         raw_currency = event.get("country") or event.get("currency")
         formatted_curr = format_currency(raw_currency)
         
@@ -168,7 +167,7 @@ def send_daily_economic_briefing(events, now_ksa):
                 continue
 
     if not today_events:
-        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
+        send_to_telegram("📊 *أبرز أخبار اليوم الاقتصادية*\n▪️▪️▪️▪️▪️▪️▪️▪️▪️\n\nلا توجد أخبار اقتصادية ذات تأثير عالي أو متوسط مسجلة لهذا اليوم.")
         return
 
     today_events.sort(key=lambda x: x[0])
@@ -236,7 +235,6 @@ def check_forex_factory_news():
             last_daily_summary_date = today_str
 
         for event in events:
-            # تصحيح مفتاح جلب العملة هنا أيضاً
             raw_currency = event.get("country") or event.get("currency")
             formatted_curr = format_currency(raw_currency)
             impact = event.get("impact")
@@ -259,7 +257,7 @@ def check_forex_factory_news():
                     if 10 <= time_difference <= 20 and event_id not in sent_alerts:
                         impact_emoji = "🔴" if impact == "High" else "🟠"
                         news_alert = f"""⏳ *تنبيه اقتصادي هام (قريب جداً)*
-▪️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️️▪️▪️▪️
 📊 الحدث: {title}
 💱 العملة: `{formatted_curr}`
 ⚠ الأثر: {impact_emoji} ({impact})
@@ -272,14 +270,14 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # 2️⃣ متابعة النتيجة لحظياً كل 15 ثانية ضمن النافذة (من -3 إلى 0 دقائق)
-                    elif -3 <= time_difference <= 0 and event_id in sent_alerts:
+                    # 2️⃣ متابعة النتيجة لحظياً (تم تمديد النافذة حتى 10 دقائق بعد وقت الخبر لضمان التقاط التأخير في موقع المصدر)
+                    elif -3 <= time_difference <= 10 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             direction, note = analyze_news_impact(raw_title, actual, forecast)
                             
                             result_message = f"""📊 *صدر الآن :*
-▪️️▪️▪️▪️▪️▪️▪️▪️▪️
+▪️▪️▪️▪️▪️▪️▪️️▪️▪️
 📌 العملة / الأصل: *{formatted_curr}*
 📌 الحدث: {title}
 
@@ -307,7 +305,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with correct country/currency mapping!", 200
+    return "Bot is running with expanded result window (-3 to +10 mins)!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
