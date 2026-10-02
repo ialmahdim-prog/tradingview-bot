@@ -8,7 +8,7 @@ import re
 
 app = Flask(__name__)
 
-# ⚙️️ إعدادات بوت تيليجرام
+# ⚙️ إعدادات بوت تيليجرام
 TELEGRAM_BOT_TOKEN = "8655072721:AAF_-5t5Ld3APrYmvSjwz2M-WAMnFUDBjis"
 TELEGRAM_CHANNEL_ID = "-1004363846255"
 
@@ -270,14 +270,19 @@ def check_forex_factory_news():
                                 "result_sent": False
                             }
 
-                    # 2️⃣ متابعة النتيجة لحظياً (تم تمديد النافذة حتى 10 دقائق بعد وقت الخبر لضمان التقاط التأخير في موقع المصدر)
+                    # 2️⃣ متابعة النتيجة لحظياً مع طباعة حالة الفحص لمراقبة الخادم
                     elif -3 <= time_difference <= 10 and event_id in sent_alerts:
                         alert_data = sent_alerts[event_id]
+                        
+                        # طباعة في سجلات الخادم لنرى ماذا يوجد في actual وقت الخبر
+                        if not alert_data["result_sent"]:
+                            print(f"مراقبة الخبر: {raw_title} | فرق الوقت: {time_difference:.1f} دقيقة | القيمة الفعليّة (Actual): {repr(actual)}")
+
                         if not alert_data["result_sent"] and actual is not None and str(actual).strip() != "":
                             direction, note = analyze_news_impact(raw_title, actual, forecast)
                             
                             result_message = f"""📊 *صدر الآن :*
-▪️▪️▪️▪️▪️▪️▪️️▪️▪️
+▪️▪️▪️▪️▪️️▪️▪️▪️▪️
 📌 العملة / الأصل: *{formatted_curr}*
 📌 الحدث: {title}
 
@@ -294,9 +299,10 @@ def check_forex_factory_news():
                             alert_data["result_sent"] = True
 
                 except Exception as e:
+                    print("خطأ داخلي أثناء معالجة الخبر:", e)
                     continue
     except Exception as e:
-        print("خطأ في فحص ومتابعة الأخبار الاقتصادية:", e)
+        print("خطأ في جلب البيانات من المصدر:", e)
 
 # ⚡ تشغيل الجدولة بفحص متسارع كل 15 ثانية
 scheduler = BackgroundScheduler()
@@ -305,7 +311,7 @@ scheduler.start()
 
 @app.route('/')
 def home():
-    return "Bot is running with expanded result window (-3 to +10 mins)!", 200
+    return "Bot is running with debug logs for actual results!", 200
 
 @app.route('/test-briefing')
 def test_briefing():
